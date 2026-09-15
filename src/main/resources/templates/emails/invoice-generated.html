@@ -1,0 +1,33 @@
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background-color: #17a2b8; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f8f9fa; padding: 20px; }
+        .footer { background-color: #e9ecef; padding: 10px; text-align: center; font-size: 12px; border-radius: 0 0 5px 5px; }
+        .button { background-color: #17a2b8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Invoice Generated</h1>
+        </div>
+        <div class="content">
+            <p>A new invoice has been generated for [CUSTOMER_NAME].</p>
+            <p><strong>Invoice Details:</strong></p>
+            <ul>
+                <li>Invoice ID: [INVOICE_ID]</li>
+                <li>Amount: [AMOUNT]</li>
+                <li>Due Date: [DUE_DATE]</li>
+                <li>Status: [STATUS]</li>
+            </ul>
+            <a href="https://webliix.com/invoices/[INVOICE_ID]" class="button">View Invoice</a>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Webliix. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

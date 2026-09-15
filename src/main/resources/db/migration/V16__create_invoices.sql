@@ -1,0 +1,20 @@
+CREATE TABLE invoices (
+    id BIGSERIAL PRIMARY KEY,
+    invoice_number VARCHAR(100) UNIQUE NOT NULL,
+    customer_id BIGINT,
+    project_id BIGINT,
+    issue_date DATE,
+    due_date DATE,
+    subtotal NUMERIC(19,2),
+    tax_amount NUMERIC(19,2),
+    discount_amount NUMERIC(19,2),
+    total_amount NUMERIC(19,2),
+    paid_amount NUMERIC(19,2),
+    pending_amount NUMERIC(19,2),
+    status VARCHAR(50),
+    notes TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT fk_invoice_customer FOREIGN KEY(customer_id) REFERENCES customers(id),
+    CONSTRAINT fk_invoice_project FOREIGN KEY(project_id) REFERENCES projects(id)
+);

@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id BIGSERIAL PRIMARY KEY,
+
+    user_id BIGINT NOT NULL UNIQUE,
+
+    email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sms_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+
+    ticket_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    invoice_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    project_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    lead_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    payroll_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

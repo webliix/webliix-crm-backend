@@ -1,0 +1,34 @@
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background-color: #20c997; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f8f9fa; padding: 20px; }
+        .footer { background-color: #e9ecef; padding: 10px; text-align: center; font-size: 12px; border-radius: 0 0 5px 5px; }
+        .button { background-color: #20c997; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Payroll Generated</h1>
+        </div>
+        <div class="content">
+            <p>Your payroll has been generated and is ready for processing.</p>
+            <p><strong>Payroll Details:</strong></p>
+            <ul>
+                <li>Period: [PERIOD]</li>
+                <li>Gross Amount: [GROSS_AMOUNT]</li>
+                <li>Deductions: [DEDUCTIONS]</li>
+                <li>Net Amount: [NET_AMOUNT]</li>
+                <li>Status: [STATUS]</li>
+            </ul>
+            <a href="https://webliix.com/payroll/[PAYROLL_ID]" class="button">View Payroll</a>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Webliix. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

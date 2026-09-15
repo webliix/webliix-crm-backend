@@ -1,0 +1,23 @@
+CREATE TABLE tickets (
+    id BIGSERIAL PRIMARY KEY,
+    ticket_number VARCHAR(50) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    customer_id BIGINT,
+    project_id BIGINT,
+    created_by VARCHAR(255),
+    assigned_to_id BIGINT,
+    priority VARCHAR(50),
+    status VARCHAR(50),
+    category VARCHAR(50),
+    due_date DATE,
+    sla_hours INT,
+    response_time INT,
+    resolution_time INT,
+    closed_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    CONSTRAINT fk_tickets_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    CONSTRAINT fk_tickets_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+    CONSTRAINT fk_tickets_assigned_to FOREIGN KEY (assigned_to_id) REFERENCES employees(id) ON DELETE SET NULL
+);

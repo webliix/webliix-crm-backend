@@ -1,0 +1,51 @@
+# Maven Target & Build Outputs
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.rar
+build/
+
+# Uploads & Local Media Storage (Excludes runtime user files)
+uploads/
+/uploads
+storage/
+temp/
+tmp/
+
+# Logs & Debug Output
+logs/
+*.log
+*.log.*
+*.syslog
+
+# Environment & Secrets
+.env
+.env.local
+*.env
+secrets.properties
+
+# IntelliJ IDEA & STS
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# VS Code & OS Files
+.vscode/
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Maven Wrapper & Cache
+.mvn/timing.tsv
+.cache/

@@ -1,0 +1,3 @@
+ALTER TABLE quotations
+    ADD COLUMN converted BOOLEAN DEFAULT FALSE,
+    ADD COLUMN converted_at TIMESTAMP;

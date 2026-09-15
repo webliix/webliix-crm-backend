@@ -1,0 +1,57 @@
+backend/
+├── pom.xml
+├── src/
+│   ├── main/
+│   │   ├── java/com/webliix/
+│   │   │   ├── WebliixApplication.java
+│   │   │   ├── shared/                     # Interfaces, DTOs, Events, Exceptions
+│   │   │   │   ├── interfaces/
+│   │   │   │   │   ├── EmailService.java
+│   │   │   │   │   ├── StorageService.java
+│   │   │   │   │   └── AuditLogger.java
+│   │   │   │   ├── events/
+│   │   │   │   │   ├── LeadWonEvent.java
+│   │   │   │   │   ├── InvoiceDueEvent.java
+│   │   │   │   │   └── TaskCompletedEvent.java
+│   │   │   │   ├── dto/
+│   │   │   │   │   └── ApiResponse.java
+│   │   │   │   └── exceptions/
+│   │   │   │       ├── GlobalExceptionHandler.java
+│   │   │   │       └── ResourceNotFoundException.java
+│   │   │   ├── security/                   # JWT, RBAC, SecurityConfig
+│   │   │   │   ├── SecurityConfig.java
+│   │   │   │   ├── JwtAuthFilter.java
+│   │   │   │   ├── JwtService.java
+│   │   │   │   └── UserDetailsServiceImpl.java
+│   │   │   ├── core/                       # Users, Roles, Permissions
+│   │   │   │   ├── domain/
+│   │   │   │   ├── repository/
+│   │   │   │   ├── service/
+│   │   │   │   ├── controller/            # AuthController, UserController
+│   │   │   │   └── dto/
+│   │   │   ├── crm/                        # Leads, Clients, Contacts
+│   │   │   │   ├── domain/
+│   │   │   │   ├── repository/
+│   │   │   │   ├── service/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── dto/
+│   │   │   │   └── listeners/             # e.g., LeadEventListener
+│   │   │   ├── projects/
+│   │   │   ├── finance/                   # Invoices, Payments
+│   │   │   ├── tickets/
+│   │   │   ├── hr/                        # Employees, Payroll, Attendance
+│   │   │   ├── assets/                    # Domains, Hosting
+│   │   │   ├── automation/               # Schedulers, Event handlers
+│   │   │   │   ├── scheduler/
+│   │   │   │   └── listeners/
+│   │   │   ├── notifications/            # Email, WhatsApp, Push
+│   │   │   ├── reports/
+│   │   │   └── audit/
+│   │   ├── resources/
+│   │   │   ├── application.yml
+│   │   │   ├── application-dev.yml
+│   │   │   ├── db/migration/             # Flyway scripts
+│   │   │   │   ├── V1__init_schema.sql
+│   │   │   │   └── V2__sample_data.sql
+│   │   │   └── templates/email/          # Thymeleaf email templates
+│   │   └── ...
