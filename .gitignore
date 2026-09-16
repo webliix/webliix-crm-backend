@@ -10,7 +10,7 @@ build/
 # Uploads & Local Media Storage (Excludes runtime user files)
 uploads/
 /uploads
-storage/
+/storage/
 temp/
 tmp/
 
