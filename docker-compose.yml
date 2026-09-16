@@ -1,11 +1,8 @@
-version: '3.9'
-
 services:
 
   webliix:
     build: .
     container_name: webliix-app
-
     restart: unless-stopped
 
     depends_on:
@@ -14,25 +11,17 @@ services:
       - minio
 
     ports:
-      - "8080:8080"
+      - "8082:8082"
+
+    env_file:
+      - .env
 
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/webliix_db
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-
-      MINIO_URL: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin123
+      SPRING_PROFILES_ACTIVE: production
 
   postgres:
     image: postgres:16
-
     container_name: webliix-postgres
-
     restart: unless-stopped
 
     environment:
@@ -48,9 +37,7 @@ services:
 
   redis:
     image: redis:7
-
     container_name: webliix-redis
-
     restart: unless-stopped
 
     ports:
@@ -58,9 +45,7 @@ services:
 
   minio:
     image: minio/minio
-
     container_name: webliix-minio
-
     restart: unless-stopped
 
     command: server /data --console-address ":9001"
