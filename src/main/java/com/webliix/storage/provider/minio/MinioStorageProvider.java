@@ -1,7 +1,7 @@
 package com.webliix.storage.provider.minio;
 
 import java.io.InputStream;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -19,6 +19,10 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
 @Component
+@ConditionalOnProperty(
+        name = "storage.provider",
+        havingValue = "minio"
+)
 @RequiredArgsConstructor
 public class MinioStorageProvider implements StorageProvider {
 
