@@ -9,4 +9,10 @@ public interface EmailService {
     void sendTemplateEmail(String to, String templateName, String subject);
 
     void sendNotificationEmail(String to, String title, String message);
+
+    void sendVerificationOtpEmail(String to, String name, String otp, int expirationMinutes);
+
+    void sendForgotPasswordOtpEmail(String to, String name, String otp, int expirationMinutes);
+
+    void sendPasswordResetSuccessEmail(String to, String name);
 }

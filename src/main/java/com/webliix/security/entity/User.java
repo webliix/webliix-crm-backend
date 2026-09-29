@@ -47,6 +47,10 @@ public class User {
 
     private Boolean enabled;
 
+    @Column(name = "email_verified")
+    @Builder.Default
+    private Boolean emailVerified = false;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

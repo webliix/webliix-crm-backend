@@ -25,6 +25,7 @@ public class NewsletterServiceImpl implements NewsletterService {
 
     private final NewsletterSubscriberRepository subscriberRepository;
     private final EmailService emailService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -42,6 +43,7 @@ public class NewsletterServiceImpl implements NewsletterService {
                 sub.setUnsubscribedAt(null);
                 NewsletterSubscriber saved = subscriberRepository.save(sub);
                 sendWelcomeEmail(saved);
+                eventPublisher.publishEvent(new com.webliix.newsletter.event.NewsletterSubscribedEvent(this, saved.getEmail(), request.getSourcePage()));
                 return toResponse(saved, "Subscription reactivated successfully!");
             }
         }
@@ -57,6 +59,7 @@ public class NewsletterServiceImpl implements NewsletterService {
 
         NewsletterSubscriber saved = subscriberRepository.save(subscriber);
         sendWelcomeEmail(saved);
+        eventPublisher.publishEvent(new com.webliix.newsletter.event.NewsletterSubscribedEvent(this, saved.getEmail(), request.getSourcePage()));
 
         return toResponse(saved, "Thank you for subscribing to Webliix updates!");
     }
@@ -75,6 +78,49 @@ public class NewsletterServiceImpl implements NewsletterService {
     @Override
     public Page<NewsletterSubscriberResponse> getAllSubscribers(Pageable pageable) {
         return subscriberRepository.findAll(pageable).map(s -> toResponse(s, null));
+    }
+
+    @Override
+    @Transactional
+    public int sendBroadcast(com.webliix.newsletter.dto.NewsletterBroadcastRequest request) {
+        java.util.List<NewsletterSubscriber> activeSubscribers = subscriberRepository.findByStatus("ACTIVE");
+        int count = 0;
+        for (NewsletterSubscriber sub : activeSubscribers) {
+            try {
+                emailService.sendEmail(sub.getEmail(), request.getSubject(), request.getContent());
+                count++;
+            } catch (Exception ex) {
+                log.error("Failed to send broadcast email to subscriber {}: {}", sub.getEmail(), ex.getMessage());
+            }
+        }
+        return count;
+    }
+
+    @Override
+    @Transactional
+    public NewsletterSubscriberResponse toggleStatus(Long id) {
+        NewsletterSubscriber subscriber = subscriberRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscriber not found with id: " + id));
+
+        if ("ACTIVE".equalsIgnoreCase(subscriber.getStatus())) {
+            subscriber.setStatus("INACTIVE");
+            subscriber.setUnsubscribedAt(LocalDateTime.now());
+        } else {
+            subscriber.setStatus("ACTIVE");
+            subscriber.setUnsubscribedAt(null);
+        }
+
+        NewsletterSubscriber updated = subscriberRepository.save(subscriber);
+        return toResponse(updated, "Status updated successfully");
+    }
+
+    @Override
+    @Transactional
+    public void deleteSubscriber(Long id) {
+        if (!subscriberRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Subscriber not found with id: " + id);
+        }
+        subscriberRepository.deleteById(id);
     }
 
     private void sendWelcomeEmail(NewsletterSubscriber sub) {
@@ -103,6 +149,7 @@ public class NewsletterServiceImpl implements NewsletterService {
                 .email(sub.getEmail())
                 .name(sub.getName())
                 .status(sub.getStatus())
+                .active("ACTIVE".equalsIgnoreCase(sub.getStatus()))
                 .message(message)
                 .subscribedAt(sub.getSubscribedAt())
                 .build();

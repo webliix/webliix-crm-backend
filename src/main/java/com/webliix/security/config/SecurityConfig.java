@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import com.webliix.security.jwt.JwtAuthenticationFilter;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -35,7 +37,13 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/v1/auth/login",
                     "/api/v1/auth/register",
+                    "/api/v1/auth/forgot-password",
+                    "/api/v1/auth/verify-reset-otp",
+                    "/api/v1/auth/reset-password",
+                    "/api/v1/auth/verify-email",
+                    "/api/v1/auth/resend-verification-otp",
                     "/api/v1/public/**",
+                    "/api/public/**",
                     "/api/v1/portal/auth/**",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",

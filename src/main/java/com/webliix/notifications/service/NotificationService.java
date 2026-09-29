@@ -8,7 +8,11 @@ public interface NotificationService {
 
     NotificationResponse createNotification(CreateNotificationRequest request);
 
+    NotificationResponse broadcastNotification(CreateNotificationRequest request);
+
     List<NotificationResponse> getNotifications(String recipient);
+
+    List<NotificationResponse> getNotificationsForUser(org.springframework.security.core.Authentication auth);
 
     List<NotificationResponse> getUnreadNotifications(String recipient);
 

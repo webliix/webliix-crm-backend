@@ -20,6 +20,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(@RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.createProject(request);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
@@ -32,10 +33,11 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProjectResponse>>> getProjects(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            org.springframework.security.core.Authentication authentication
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ProjectResponse> response = projectService.getAllProjects(pageable);
+        Page<ProjectResponse> response = projectService.getAllProjects(pageable, authentication);
         return ResponseEntity.ok(ApiResponse.<Page<ProjectResponse>>builder()
                 .success(true)
                 .message("Projects fetched")
@@ -47,10 +49,11 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Page<ProjectResponse>>> searchProjects(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            org.springframework.security.core.Authentication authentication
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ProjectResponse> response = projectService.searchProjects(keyword, pageable);
+        Page<ProjectResponse> response = projectService.searchProjects(keyword, pageable, authentication);
         return ResponseEntity.ok(ApiResponse.<Page<ProjectResponse>>builder()
                 .success(true)
                 .message("Project search results")
@@ -59,8 +62,11 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ProjectResponse>> getProject(@PathVariable Long id) {
-        ProjectResponse response = projectService.getProject(id);
+    public ResponseEntity<ApiResponse<ProjectResponse>> getProject(
+            @PathVariable Long id,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        ProjectResponse response = projectService.getProject(id, authentication);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
                 .success(true)
                 .message("Project fetched")

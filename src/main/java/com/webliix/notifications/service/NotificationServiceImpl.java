@@ -54,9 +54,65 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public NotificationResponse broadcastNotification(CreateNotificationRequest request) {
+        String recipientTarget = (request.getRecipient() != null && !request.getRecipient().isBlank())
+                ? request.getRecipient().trim() : "ALL";
+
+        Notification notification = Notification.builder()
+                .title(request.getTitle())
+                .message(request.getMessage())
+                .recipient(recipientTarget)
+                .recipientType(request.getRecipientType() != null ? request.getRecipientType() : "BROADCAST")
+                .channel(request.getChannel() != null ? request.getChannel() : com.webliix.notifications.enums.NotificationChannel.IN_APP)
+                .status(NotificationStatus.PENDING)
+                .referenceType(request.getReferenceType() != null ? request.getReferenceType() : "SYSTEM")
+                .referenceId(request.getReferenceId())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        Notification saved = notificationRepository.save(notification);
+        return NotificationMapper.toResponse(saved);
+    }
+
+    @Override
+    public List<NotificationResponse> getNotificationsForUser(org.springframework.security.core.Authentication auth) {
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            return getNotifications("admin@webliix.in");
+        }
+
+        String userEmail = auth.getName().trim().toLowerCase();
+        java.util.Set<String> targets = new java.util.HashSet<>();
+        targets.add(userEmail);
+        targets.add("ALL");
+        targets.add("ALL_USERS");
+
+        if (auth.getAuthorities() != null) {
+            auth.getAuthorities().forEach(granted -> {
+                String authName = granted.getAuthority();
+                targets.add(authName);
+                if (authName.startsWith("ROLE_")) {
+                    targets.add(authName.substring(5));
+                }
+            });
+        }
+
+        List<Notification> notifications = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
+
+        if (notifications.isEmpty()) {
+            return getNotifications(userEmail);
+        }
+
+        return notifications.stream()
+                .map(NotificationMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<NotificationResponse> getNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient;
-        List<Notification> list = notificationRepository.findByRecipientOrderByCreatedAtDesc(rec);
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        List<Notification> list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
 
         if (list.isEmpty()) {
             // Seed initial persistent notifications into DB for recipient
@@ -100,7 +156,7 @@ public class NotificationServiceImpl implements NotificationService {
                     .build();
 
             notificationRepository.saveAll(List.of(n1, n2, n3));
-            list = notificationRepository.findByRecipientOrderByCreatedAtDesc(rec);
+            list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
         }
 
         return list.stream()
@@ -115,14 +171,17 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void clearAllNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient;
-        List<Notification> all = notificationRepository.findByRecipientOrderByCreatedAtDesc(rec);
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        List<Notification> all = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
         notificationRepository.deleteAll(all);
     }
 
     @Override
     public List<NotificationResponse> getUnreadNotifications(String recipient) {
-        return notificationRepository.findByRecipientAndStatusOrderByCreatedAtDesc(recipient, NotificationStatus.PENDING)
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        return notificationRepository.findByRecipientInAndStatusOrderByCreatedAtDesc(targets, NotificationStatus.PENDING)
                 .stream()
                 .map(NotificationMapper::toResponse)
                 .collect(Collectors.toList());
@@ -168,15 +227,17 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationPreferenceResponse getPreferences(Long userId) {
-        NotificationPreference preference = preferenceRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification preference not found for user: " + userId));
+        Long targetId = userId != null ? userId : 1L;
+        NotificationPreference preference = preferenceRepository.findByUserId(targetId)
+                .orElseGet(() -> createDefaultPreference(targetId));
         return NotificationMapper.toResponse(preference);
     }
 
     @Override
     public NotificationPreferenceResponse updatePreferences(NotificationPreferenceRequest request) {
-        NotificationPreference preference = preferenceRepository.findByUserId(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("Notification preference not found for user: " + request.getUserId()));
+        Long userId = request.getUserId() != null ? request.getUserId() : 1L;
+        NotificationPreference preference = preferenceRepository.findByUserId(userId)
+                .orElseGet(() -> createDefaultPreference(userId));
 
         if (request.getEmailEnabled() != null) preference.setEmailEnabled(request.getEmailEnabled());
         if (request.getSmsEnabled() != null) preference.setSmsEnabled(request.getSmsEnabled());
@@ -191,6 +252,24 @@ public class NotificationServiceImpl implements NotificationService {
         preference.setUpdatedAt(LocalDateTime.now());
         NotificationPreference updated = preferenceRepository.save(preference);
         return NotificationMapper.toResponse(updated);
+    }
+
+    private NotificationPreference createDefaultPreference(Long userId) {
+        NotificationPreference pref = NotificationPreference.builder()
+                .userId(userId)
+                .emailEnabled(true)
+                .smsEnabled(false)
+                .whatsappEnabled(false)
+                .pushEnabled(true)
+                .ticketNotifications(true)
+                .invoiceNotifications(true)
+                .projectNotifications(true)
+                .leadNotifications(true)
+                .payrollNotifications(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        return preferenceRepository.save(pref);
     }
 
     @Override

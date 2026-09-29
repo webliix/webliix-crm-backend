@@ -17,6 +17,7 @@ public class NewsletterSubscriberResponse {
     private String email;
     private String name;
     private String status;
+    private boolean active;
     private String message;
     private LocalDateTime subscribedAt;
 }

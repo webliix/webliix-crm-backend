@@ -4,21 +4,23 @@ import com.webliix.projects.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.security.core.Authentication;
+
 import java.util.List;
 
 public interface ProjectService {
 
     ProjectResponse createProject(CreateProjectRequest request);
 
-    ProjectResponse getProject(Long id);
+    ProjectResponse getProject(Long id, Authentication auth);
 
-    Page<ProjectResponse> getAllProjects(Pageable pageable);
+    Page<ProjectResponse> getAllProjects(Pageable pageable, Authentication auth);
 
     ProjectResponse updateProject(Long id, CreateProjectRequest request);
 
     void deleteProject(Long id);
 
-    Page<ProjectResponse> searchProjects(String keyword, Pageable pageable);
+    Page<ProjectResponse> searchProjects(String keyword, Pageable pageable, Authentication auth);
 
     ProjectMemberResponse addProjectMember(Long projectId, CreateProjectMemberRequest request);
 

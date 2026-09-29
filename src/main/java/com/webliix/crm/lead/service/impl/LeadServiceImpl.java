@@ -45,21 +45,41 @@ public class LeadServiceImpl implements LeadService {
     @Override
     @Transactional
     public PublicLeadResponse createPublicLead(PublicLeadRequest request) {
+        String cleanName = sanitize(request.getName());
+        String cleanEmail = sanitize(request.getEmail()).toLowerCase();
+        String cleanPhone = request.getPhone() != null ? sanitize(request.getPhone()) : null;
         String companyName = request.getCompanyName() != null && !request.getCompanyName().isBlank()
-                ? request.getCompanyName().trim()
-                : request.getName().trim();
+                ? sanitize(request.getCompanyName())
+                : cleanName;
 
-        String requirements = request.getRequirements() != null ? request.getRequirements().trim() : "";
+        StringBuilder reqBuilder = new StringBuilder();
         if (request.getServiceRequested() != null && !request.getServiceRequested().isBlank()) {
-            requirements = "[Service: " + request.getServiceRequested().trim() + "] " + requirements;
+            reqBuilder.append("[Service: ").append(sanitize(request.getServiceRequested())).append("] ");
         }
+        if (request.getSource() != null && !request.getSource().isBlank()) {
+            reqBuilder.append("[Source: ").append(sanitize(request.getSource())).append("] ");
+        }
+        if (request.getPage() != null && !request.getPage().isBlank()) {
+            reqBuilder.append("[Page: ").append(sanitize(request.getPage())).append("] ");
+        }
+        if (request.getUtmSource() != null && !request.getUtmSource().isBlank()) {
+            reqBuilder.append("[UTM Source: ").append(sanitize(request.getUtmSource())).append("] ");
+        }
+        if (request.getUtmCampaign() != null && !request.getUtmCampaign().isBlank()) {
+            reqBuilder.append("[UTM Campaign: ").append(sanitize(request.getUtmCampaign())).append("] ");
+        }
+        if (request.getRequirements() != null && !request.getRequirements().isBlank()) {
+            reqBuilder.append(sanitize(request.getRequirements()));
+        }
+
+        String fullRequirements = reqBuilder.toString().trim();
 
         Lead lead = Lead.builder()
                 .companyName(companyName)
-                .contactPerson(request.getName().trim())
-                .email(request.getEmail().trim())
-                .phone(request.getPhone() != null ? request.getPhone().trim() : null)
-                .requirements(requirements)
+                .contactPerson(cleanName)
+                .email(cleanEmail)
+                .phone(cleanPhone)
+                .requirements(fullRequirements)
                 .estimatedValue(request.getEstimatedBudget())
                 .source(LeadSource.WEBSITE)
                 .status(LeadStatus.NEW)
@@ -69,33 +89,32 @@ public class LeadServiceImpl implements LeadService {
 
         Lead saved = leadRepository.save(lead);
 
-        // 1. Automated welcome and requirement inquiry email
-        try {
-            String emailSubject = "Thank you for contacting Webliix – Let's discuss your requirements";
-            String emailBody = "Hello " + request.getName() + ",\n\n"
-                    + "Thank you for reaching out to Webliix! We have successfully received your project inquiry:\n\n"
-                    + "Requirements Summary:\n\"" + requirements + "\"\n\n"
-                    + "Our solutions team is reviewing your project details. We would love to understand any specific technical requirements or timelines you have.\n\n"
-                    + "Feel free to reply directly to this email with any additional documents or specifications.\n\n"
-                    + "Best regards,\nWebliix Team\nhttps://webliix.in";
-            emailService.sendEmail(request.getEmail(), emailSubject, emailBody);
-        } catch (Exception ex) {
-            log.warn("Could not send automated lead email: {}", ex.getMessage());
-        }
-
-        // 2. Automated WhatsApp connect URL generation
-        String cleanPhone = request.getPhone() != null ? request.getPhone().replaceAll("[^0-9]", "") : "";
+        // Generate optional WhatsApp connect URL for response payload
+        String rawPhone = cleanPhone != null ? cleanPhone.replaceAll("[^0-9]", "") : "";
         String whatsappUrl = null;
-        if (!cleanPhone.isEmpty()) {
+        if (!rawPhone.isEmpty()) {
             String greetingText = URLEncoder.encode(
-                    "Hello " + request.getName() + ", thank you for reaching out to Webliix! We received your project inquiry: \"" + requirements + "\". We would love to discuss your requirements.",
+                    "Hello " + cleanName + ", thank you for reaching out to Webliix! We received your inquiry: \"" + fullRequirements + "\". Our team will be happy to assist you.",
                     StandardCharsets.UTF_8
             );
-            whatsappUrl = "https://wa.me/" + cleanPhone + "?text=" + greetingText;
+            whatsappUrl = "https://wa.me/" + rawPhone + "?text=" + greetingText;
         }
 
-        // 3. Publish event for CRM notification listeners
-        eventPublisher.publishEvent(new LeadCreatedEvent(this, saved.getId(), saved.getContactPerson(), saved.getEmail()));
+        // Publish domain event for decoupled email and internal notification processing
+        eventPublisher.publishEvent(new com.webliix.crm.lead.event.PublicLeadSubmittedEvent(
+                this,
+                saved.getId(),
+                saved.getContactPerson(),
+                saved.getCompanyName(),
+                saved.getEmail(),
+                saved.getPhone(),
+                saved.getRequirements(),
+                request.getServiceRequested(),
+                saved.getEstimatedValue(),
+                request.getSource(),
+                request.getPage(),
+                saved.getCreatedAt()
+        ));
 
         return PublicLeadResponse.builder()
                 .leadId(saved.getId())
@@ -105,9 +124,14 @@ public class LeadServiceImpl implements LeadService {
                 .phone(saved.getPhone())
                 .status(saved.getStatus().name())
                 .whatsappConnectUrl(whatsappUrl)
-                .message("Lead registered successfully. Automated inquiry dispatched.")
+                .message("Thank you for contacting Webliix! We have received your inquiry and sent a confirmation email.")
                 .createdAt(saved.getCreatedAt())
                 .build();
+    }
+
+    private String sanitize(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]*>", "").trim();
     }
 
     @Override

@@ -25,6 +25,7 @@ public class UserProfileResponse {
     private String language;
     private Boolean twoFactorEnabled;
     private Boolean enabled;
+    private Boolean emailVerified;
     private Set<String> roles;
     private Set<String> permissions;
     private LocalDateTime createdAt;

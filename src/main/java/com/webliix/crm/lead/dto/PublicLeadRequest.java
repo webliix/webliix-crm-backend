@@ -26,12 +26,22 @@ public class PublicLeadRequest {
 
     private String phone;
 
-    @NotBlank(message = "Project requirements or inquiry message is required")
     private String requirements;
 
     private String serviceRequested;
 
     private BigDecimal estimatedBudget;
 
+    // Anti-spam honeypot trap field (should remain empty for real users)
+    private String honeypot;
+
+    // Attribution Data
     private String source;
+    private String page;
+    private String referrer;
+    private String utmSource;
+    private String utmMedium;
+    private String utmCampaign;
+    private String utmTerm;
+    private String utmContent;
 }

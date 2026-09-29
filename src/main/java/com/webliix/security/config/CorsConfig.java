@@ -17,6 +17,10 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOriginPatterns(List.of(
+                "https://admin.webliix.com",
+                "http://admin.webliix.com",
+                "https://admin.webliix.in",
+                "http://admin.webliix.in",
                 "https://webliix.com",
                 "https://www.webliix.com",
                 "https://webliix.in",

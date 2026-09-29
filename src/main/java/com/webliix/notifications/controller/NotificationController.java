@@ -27,9 +27,20 @@ public class NotificationController {
                 .build());
     }
 
+    @PostMapping("/broadcast")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('NOTIFICATIONS_BROADCAST', 'SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<ApiResponse<NotificationResponse>> broadcastNotification(@Valid @RequestBody CreateNotificationRequest request) {
+        NotificationResponse response = notificationService.broadcastNotification(request);
+        return ResponseEntity.ok(ApiResponse.<NotificationResponse>builder()
+                .success(true)
+                .message("Notification broadcast sent successfully")
+                .data(response)
+                .build());
+    }
+
     @GetMapping({"", "/"})
-    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications() {
-        List<NotificationResponse> response = notificationService.getNotifications("admin@webliix.in");
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(org.springframework.security.core.Authentication authentication) {
+        List<NotificationResponse> response = notificationService.getNotificationsForUser(authentication);
         return ResponseEntity.ok(ApiResponse.<List<NotificationResponse>>builder()
                 .success(true)
                 .message("Notifications fetched")
@@ -57,11 +68,30 @@ public class NotificationController {
     }
 
     @DeleteMapping({"/clear/{recipient}", "/clear"})
-    public ResponseEntity<ApiResponse<Void>> clearAllNotifications(@PathVariable(required = false) String recipient) {
-        notificationService.clearAllNotifications(recipient != null ? recipient : "admin@webliix.in");
+    public ResponseEntity<ApiResponse<Void>> clearAllNotifications(
+            @PathVariable(required = false) String recipient,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        String targetRecipient = recipient != null ? recipient : (authentication != null ? authentication.getName() : "admin@webliix.in");
+        notificationService.clearAllNotifications(targetRecipient);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("All notifications cleared")
+                .build());
+    }
+
+    @GetMapping({"/unread-count", "/{recipient}/unread-count"})
+    public ResponseEntity<ApiResponse<Integer>> getUnreadCount(
+            @PathVariable(required = false) String recipient,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        String target = recipient != null ? recipient : (authentication != null ? authentication.getName() : "ALL");
+        List<NotificationResponse> unread = notificationService.getUnreadNotifications(target);
+        int count = unread != null ? unread.size() : 0;
+        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+                .success(true)
+                .message("Unread count fetched")
+                .data(count)
                 .build());
     }
 

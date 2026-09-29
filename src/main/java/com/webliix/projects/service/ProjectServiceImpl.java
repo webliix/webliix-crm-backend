@@ -49,13 +49,23 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse getProject(Long id) {
+    public ProjectResponse getProject(Long id, org.springframework.security.core.Authentication auth) {
         Project project = findProjectById(id);
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            if (project.getCustomer() == null || project.getCustomer().getEmail() == null || !project.getCustomer().getEmail().equalsIgnoreCase(email)) {
+                throw new org.springframework.security.access.AccessDeniedException("Access denied: You can only view your own customer projects.");
+            }
+        }
         return ProjectMapper.toResponse(project);
     }
 
     @Override
-    public Page<ProjectResponse> getAllProjects(Pageable pageable) {
+    public Page<ProjectResponse> getAllProjects(Pageable pageable, org.springframework.security.core.Authentication auth) {
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            return projectRepository.findByCustomerEmail(email, pageable).map(ProjectMapper::toResponse);
+        }
         return projectRepository.findAll(pageable).map(ProjectMapper::toResponse);
     }
 
@@ -86,9 +96,19 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public Page<ProjectResponse> searchProjects(String keyword, Pageable pageable) {
+    public Page<ProjectResponse> searchProjects(String keyword, Pageable pageable, org.springframework.security.core.Authentication auth) {
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            return projectRepository.findByCustomerEmailWithSearch(email, keyword, pageable)
+                    .map(ProjectMapper::toResponse);
+        }
         return projectRepository.findByProjectNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword, pageable)
                 .map(ProjectMapper::toResponse);
+    }
+
+    private boolean isCustomer(org.springframework.security.core.Authentication auth) {
+        if (auth == null) return false;
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_USER") || a.getAuthority().equals("USER"));
     }
 
     @Override
