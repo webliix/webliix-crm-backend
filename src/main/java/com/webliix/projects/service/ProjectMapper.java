@@ -36,7 +36,14 @@ public class ProjectMapper {
         response.setActualEndDate(project.getActualEndDate());
         response.setStatus(project.getStatus());
         response.setPriority(project.getPriority());
-        response.setCustomerId(project.getCustomer() != null ? project.getCustomer().getId() : null);
+        if (project.getCustomer() != null) {
+            response.setCustomerId(project.getCustomer().getId());
+            response.setCustomerName(project.getCustomer().getContactPerson() != null && !project.getCustomer().getContactPerson().isEmpty() 
+                    ? project.getCustomer().getContactPerson() 
+                    : project.getCustomer().getCompanyName());
+            response.setCustomerEmail(project.getCustomer().getEmail());
+            response.setCustomerCompanyName(project.getCustomer().getCompanyName());
+        }
         response.setProgressPercentage(project.getProgressPercentage());
         response.setBillable(project.getBillable());
         response.setCreatedAt(project.getCreatedAt());

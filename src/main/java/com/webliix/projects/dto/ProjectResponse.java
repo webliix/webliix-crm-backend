@@ -22,6 +22,9 @@ public class ProjectResponse {
     private ProjectStatus status;
     private ProjectPriority priority;
     private Long customerId;
+    private String customerName;
+    private String customerEmail;
+    private String customerCompanyName;
     private Integer progressPercentage;
     private Boolean billable;
     private LocalDateTime createdAt;
