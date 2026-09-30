@@ -20,5 +20,13 @@ public class NotificationWebSocketService {
                 new WebSocketNotification(title, message));
     }
 
+    public void broadcastTicketUpdate(Long ticketId, String title, String message, Object payload) {
+        messagingTemplate.convertAndSend("/topic/tickets",
+                new WebSocketTicketMessage(ticketId, title, message, payload));
+        messagingTemplate.convertAndSend("/topic/notifications",
+                new WebSocketNotification(title, message));
+    }
+
     public record WebSocketNotification(String title, String message) {}
+    public record WebSocketTicketMessage(Long ticketId, String title, String message, Object payload) {}
 }

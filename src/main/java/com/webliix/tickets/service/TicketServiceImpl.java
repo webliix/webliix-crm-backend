@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.webliix.notifications.websocket.NotificationWebSocketService;
+
 @Service
 @RequiredArgsConstructor
 public class TicketServiceImpl implements TicketService {
@@ -38,6 +40,7 @@ public class TicketServiceImpl implements TicketService {
     private final ProjectRepository projectRepository;
     private final EmployeeRepository employeeRepository;
     private final TicketNumberGenerator ticketNumberGenerator;
+    private final NotificationWebSocketService notificationWebSocketService;
 
     @Override
     @Transactional
@@ -65,7 +68,9 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Ticket saved = ticketRepository.save(ticket);
-        return TicketMapper.toResponse(saved);
+        TicketResponse response = TicketMapper.toResponse(saved);
+        notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "New Support Ticket " + saved.getTicketNumber(), saved.getTitle(), response);
+        return response;
     }
 
     @Override
@@ -110,7 +115,9 @@ public class TicketServiceImpl implements TicketService {
                 .build();
         commentRepository.save(initialComment);
 
-        return TicketMapper.toResponse(savedTicket);
+        TicketResponse res = TicketMapper.toResponse(savedTicket);
+        notificationWebSocketService.broadcastTicketUpdate(savedTicket.getId(), "Client Ticket Created: " + savedTicket.getTicketNumber(), savedTicket.getTitle(), res);
+        return res;
     }
 
     @Override
@@ -210,7 +217,9 @@ public class TicketServiceImpl implements TicketService {
         ticketRepository.save(ticket);
 
         TicketComment saved = commentRepository.save(comment);
-        return TicketMapper.toResponse(saved);
+        TicketCommentResponse response = TicketMapper.toResponse(saved);
+        notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "New Chat Message on " + ticket.getTicketNumber(), saved.getComment(), response);
+        return response;
     }
 
     @Override
@@ -230,8 +239,10 @@ public class TicketServiceImpl implements TicketService {
         comment.setTicket(ticket);
         comment.setCreatedAt(LocalDateTime.now());
         TicketComment saved = commentRepository.save(comment);
+        TicketCommentResponse response = TicketMapper.toResponse(saved);
+        notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "Client Reply on " + ticket.getTicketNumber(), saved.getComment(), response);
 
-        return TicketMapper.toResponse(saved);
+        return response;
     }
 
     @Override
