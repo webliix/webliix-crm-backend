@@ -205,7 +205,9 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void markAllAsRead(String recipient) {
-        List<Notification> unread = notificationRepository.findByRecipientAndStatusOrderByCreatedAtDesc(recipient, NotificationStatus.PENDING);
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        List<Notification> unread = notificationRepository.findByRecipientInAndStatusOrderByCreatedAtDesc(targets, NotificationStatus.PENDING);
         unread.forEach(n -> {
             n.setStatus(NotificationStatus.READ);
             n.setReadAt(LocalDateTime.now());

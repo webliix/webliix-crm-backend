@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -91,6 +93,11 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public Page<InvoiceResponse> getAllInvoices(Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            return invoiceRepository.findByCustomerEmail(email, pageable).map(InvoiceMapper::toResponse);
+        }
         return invoiceRepository.findAll(pageable).map(InvoiceMapper::toResponse);
     }
 
@@ -98,7 +105,22 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponse getInvoice(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            if (invoice.getCustomer() == null || invoice.getCustomer().getEmail() == null || !invoice.getCustomer().getEmail().equalsIgnoreCase(email)) {
+                throw new org.springframework.security.access.AccessDeniedException("Access denied: You can only view your own customer invoices.");
+            }
+        }
         return InvoiceMapper.toResponse(invoice);
+    }
+
+    private boolean isCustomer(Authentication auth) {
+        if (auth == null) return false;
+        return auth.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority().toUpperCase();
+            return role.equals("ROLE_USER") || role.equals("USER") || role.equals("ROLE_CLIENT") || role.equals("CLIENT");
+        });
     }
 
     @Override
@@ -137,6 +159,13 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public Page<InvoiceResponse> searchInvoices(String keyword, Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (isCustomer(auth)) {
+            String email = auth != null ? auth.getName() : "";
+            return invoiceRepository.findByCustomerEmailAndInvoiceNumberContainingIgnoreCaseOrCustomerEmailAndProjectProjectNameContainingIgnoreCase(
+                    email, keyword, email, keyword, pageable)
+                    .map(InvoiceMapper::toResponse);
+        }
         return invoiceRepository.findByInvoiceNumberContainingIgnoreCaseOrCustomerCompanyNameContainingIgnoreCaseOrProjectProjectNameContainingIgnoreCase(
                 keyword, keyword, keyword, pageable)
                 .map(InvoiceMapper::toResponse);

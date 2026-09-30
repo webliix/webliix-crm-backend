@@ -15,6 +15,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     List<Invoice> findByCustomerId(Long customerId);
 
+    Page<Invoice> findByCustomerEmail(String email, Pageable pageable);
+
+    Page<Invoice> findByCustomerEmailAndInvoiceNumberContainingIgnoreCaseOrCustomerEmailAndProjectProjectNameContainingIgnoreCase(
+            String email1, String invoiceNumber, String email2, String projectName, Pageable pageable);
+
     Page<Invoice> findByInvoiceNumberContainingIgnoreCaseOrCustomerCompanyNameContainingIgnoreCaseOrProjectProjectNameContainingIgnoreCase(
             String invoiceNumber,
             String customerName,

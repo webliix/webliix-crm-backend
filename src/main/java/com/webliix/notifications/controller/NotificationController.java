@@ -125,9 +125,15 @@ public class NotificationController {
                 .build());
     }
 
-    @PutMapping("/{recipient}/read-all")
-    public ResponseEntity<ApiResponse<Void>> markAllAsRead(@PathVariable String recipient) {
-        notificationService.markAllAsRead(recipient);
+    @PutMapping({"/read-all", "/{recipient}/read-all"})
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead(
+            @PathVariable(required = false) String recipient,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        String targetRecipient = (recipient != null && !recipient.isBlank() && !"read-all".equalsIgnoreCase(recipient))
+                ? recipient
+                : (authentication != null ? authentication.getName() : "admin@webliix.in");
+        notificationService.markAllAsRead(targetRecipient);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("All notifications marked as read")
