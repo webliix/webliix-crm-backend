@@ -300,8 +300,9 @@ public class AuthService {
             ));
         }
 
-        if (roles.contains("USER")) {
+        if (roles.contains("USER") || roles.contains("CLIENT") || roles.contains("ROLE_CLIENT")) {
             perms.addAll(Set.of(
+                "PROJECTS_VIEW", "INVOICES_VIEW", "TICKETS_VIEW", "TICKETS_CREATE",
                 "CUSTOMER_PROJECTS_VIEW", "CUSTOMER_NOTIFICATIONS_VIEW", "PUBLIC_UPDATES_VIEW"
             ));
         }

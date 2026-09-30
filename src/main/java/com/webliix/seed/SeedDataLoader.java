@@ -18,6 +18,18 @@ import com.webliix.tenant.repository.TenantRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.webliix.security.entity.User;
+import com.webliix.security.entity.Role;
+import com.webliix.security.repository.UserRepository;
+import com.webliix.security.repository.RoleRepository;
+import com.webliix.crm.customer.entity.Customer;
+import com.webliix.crm.customer.repository.CustomerRepository;
+import com.webliix.projects.entity.Project;
+import com.webliix.projects.enums.ProjectStatus;
+import com.webliix.projects.repository.ProjectRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Pageable;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -28,6 +40,11 @@ public class SeedDataLoader implements CommandLineRunner {
     private final SubscriptionRepository subscriptionRepository;
     private final TenantRepository tenantRepository;
     private final EmailTemplateRepository emailTemplateRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final CustomerRepository customerRepository;
+    private final ProjectRepository projectRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -36,8 +53,61 @@ public class SeedDataLoader implements CommandLineRunner {
         seedPlans();
         seedEmailTemplates();
         seedDemoTenant();
+        seedTestCustomerAccount();
 
         log.info("Seed data initialization completed.");
+    }
+
+    private void seedTestCustomerAccount() {
+        String email = "himanshusharmawwlk@gmail.com";
+        if (userRepository.findByEmail(email).isEmpty()) {
+            log.info("Seeding test customer user account: {}", email);
+            Role clientRole = roleRepository.findByName("ROLE_CLIENT")
+                    .orElseGet(() -> roleRepository.findByName("ROLE_USER")
+                    .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_CLIENT").build())));
+
+            User customerUser = User.builder()
+                    .firstName("Himanshu")
+                    .lastName("Sharma")
+                    .email(email)
+                    .password(passwordEncoder.encode("customer"))
+                    .phone("+91-9876543210")
+                    .jobTitle("Enterprise Client Partner")
+                    .department("Client Account")
+                    .bio("Valued Enterprise Client managing Webliix custom project delivery, milestone reviews, and billing.")
+                    .enabled(true)
+                    .emailVerified(true)
+                    .roles(Set.of(clientRole))
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            userRepository.save(customerUser);
+        }
+
+        if (customerRepository.findByCompanyNameContainingIgnoreCase("Himanshu", Pageable.unpaged()).isEmpty()) {
+            Customer customer = Customer.builder()
+                    .companyName("Himanshu Sharma Enterprise")
+                    .contactPerson("Himanshu Sharma")
+                    .email(email)
+                    .phone("+91-9876543210")
+                    .customerCode("CUST-10088")
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            Customer savedCustomer = customerRepository.save(customer);
+
+            Project sampleProject = Project.builder()
+                    .projectName("Webliix LaunchKit Web Application")
+                    .projectCode("PRJ-8801")
+                    .description("High-speed microservices, responsive customer portal UI, and Brevo API email integration.")
+                    .progressPercentage(85)
+                    .status(ProjectStatus.IN_PROGRESS)
+                    .customer(savedCustomer)
+                    .createdAt(LocalDateTime.now().minusDays(20))
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            projectRepository.save(sampleProject);
+        }
     }
 
     private void seedPlans() {
