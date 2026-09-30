@@ -165,7 +165,7 @@ public class LeadServiceImpl implements LeadService {
 
     @Override
     public Page<LeadResponse> searchLeads(String keyword, Pageable pageable) {
-        return leadRepository.findByCompanyNameContainingIgnoreCase(keyword, pageable)
+        return leadRepository.searchLeads(keyword, pageable)
                 .map(LeadMapper::toResponse);
     }
 }

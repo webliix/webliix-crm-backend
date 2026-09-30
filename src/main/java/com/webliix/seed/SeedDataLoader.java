@@ -31,6 +31,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Pageable;
 import java.util.Set;
 
+import com.webliix.crm.lead.entity.Lead;
+import com.webliix.crm.lead.enums.LeadSource;
+import com.webliix.crm.lead.enums.LeadStatus;
+import com.webliix.crm.lead.repository.LeadRepository;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -45,6 +50,7 @@ public class SeedDataLoader implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final CustomerRepository customerRepository;
     private final ProjectRepository projectRepository;
+    private final LeadRepository leadRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -54,6 +60,7 @@ public class SeedDataLoader implements CommandLineRunner {
         seedEmailTemplates();
         seedDemoTenant();
         seedTestCustomerAccount();
+        seedSampleLeads();
 
         log.info("Seed data initialization completed.");
     }
@@ -257,5 +264,52 @@ public class SeedDataLoader implements CommandLineRunner {
 
         subscriptionRepository.save(demoSubscription);
         log.info("Created subscription for demo tenant to Business plan");
+    }
+
+    private void seedSampleLeads() {
+        if (leadRepository.count() == 0) {
+            log.info("Seeding sample CRM leads...");
+            Lead l1 = Lead.builder()
+                    .companyName("Acme Global Web Systems")
+                    .contactPerson("Rahul Sharma")
+                    .email("rahul.sharma@acmeglobal.com")
+                    .phone("+91-9876543210")
+                    .requirements("[Service: Custom Web App] Interested in full-stack enterprise portal development with microservices and real-time dashboard.")
+                    .estimatedValue(new BigDecimal("250000"))
+                    .source(LeadSource.WEBSITE)
+                    .status(LeadStatus.NEW)
+                    .createdAt(LocalDateTime.now().minusDays(2))
+                    .updatedAt(LocalDateTime.now().minusDays(2))
+                    .build();
+
+            Lead l2 = Lead.builder()
+                    .companyName("Apex Cloud Technologies")
+                    .contactPerson("Ananya Roy")
+                    .email("ananya.roy@apexcloud.io")
+                    .phone("+91-9988776655")
+                    .requirements("[Service: Mobile Application] iOS & Android cross-platform mobile app with push notifications.")
+                    .estimatedValue(new BigDecimal("180000"))
+                    .source(LeadSource.WHATSAPP)
+                    .status(LeadStatus.QUALIFIED)
+                    .createdAt(LocalDateTime.now().minusDays(5))
+                    .updatedAt(LocalDateTime.now().minusDays(3))
+                    .build();
+
+            Lead l3 = Lead.builder()
+                    .companyName("Vanguard Retail Solutions")
+                    .contactPerson("Vikram Malhotra")
+                    .email("vikram@vanguardretail.in")
+                    .phone("+91-9123456789")
+                    .requirements("[Service: E-Commerce Platform] Scalable headless e-commerce store with automated email notifications.")
+                    .estimatedValue(new BigDecimal("320000"))
+                    .source(LeadSource.WEBSITE)
+                    .status(LeadStatus.PROPOSAL_SENT)
+                    .createdAt(LocalDateTime.now().minusDays(8))
+                    .updatedAt(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            leadRepository.saveAll(java.util.List.of(l1, l2, l3));
+            log.info("Sample CRM leads seeded successfully.");
+        }
     }
 }
