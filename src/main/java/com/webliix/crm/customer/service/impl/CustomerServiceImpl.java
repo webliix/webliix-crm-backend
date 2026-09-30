@@ -41,6 +41,9 @@ public class CustomerServiceImpl implements CustomerService {
     private final InvoiceRepository invoiceRepository;
     private final CustomerCodeGenerator customerCodeGenerator;
     private final EmailService emailService;
+    private final com.webliix.security.repository.UserRepository userRepository;
+    private final com.webliix.security.repository.RoleRepository roleRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -55,21 +58,46 @@ public class CustomerServiceImpl implements CustomerService {
         }
         Customer saved = customerRepository.save(customer);
 
-        // Automated Welcome Email
+        // Automated Client Portal Credential Generation & Welcome Email
         if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
             try {
-                String subject = "Welcome to Webliix – Your Client Account Details (" + saved.getCustomerCode() + ")";
+                String rawEmail = saved.getEmail().trim().toLowerCase();
+                String defaultPassword = "Webliix#" + ((int)(Math.random() * 899999) + 100000);
+
+                if (!userRepository.existsByEmail(rawEmail)) {
+                    com.webliix.security.entity.Role clientRole = roleRepository.findByName("ROLE_CLIENT")
+                            .orElseGet(() -> roleRepository.findByName("ROLE_USER")
+                            .orElseGet(() -> roleRepository.save(com.webliix.security.entity.Role.builder().name("ROLE_CLIENT").build())));
+
+                    com.webliix.security.entity.User user = com.webliix.security.entity.User.builder()
+                            .firstName(saved.getContactPerson() != null && !saved.getContactPerson().isBlank() ? saved.getContactPerson() : saved.getCompanyName())
+                            .lastName("Client")
+                            .email(rawEmail)
+                            .password(passwordEncoder.encode(defaultPassword))
+                            .phone(saved.getPhone())
+                            .enabled(true)
+                            .emailVerified(true)
+                            .roles(java.util.Set.of(clientRole))
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    userRepository.save(user);
+                } else {
+                    defaultPassword = "[Existing Account Password / Use Reset Link]";
+                }
+
+                String subject = "Welcome to Webliix Client Portal – Account Credentials (" + saved.getCustomerCode() + ")";
                 String body = "Hello " + (saved.getContactPerson() != null ? saved.getContactPerson() : saved.getCompanyName()) + ",\n\n"
-                        + "Welcome to Webliix! Your client account has been successfully registered.\n\n"
-                        + "Account Information:\n"
-                        + "• Customer Code: " + saved.getCustomerCode() + "\n"
-                        + "• Company Name: " + saved.getCompanyName() + "\n"
-                        + "• Email: " + saved.getEmail() + "\n\n"
-                        + "You can track your projects, invoices, and communications through our portal.\n\n"
-                        + "Best regards,\nWebliix Operations Team\nhttps://webliix.in";
-                emailService.sendEmail(saved.getEmail(), subject, body);
+                        + "Welcome to Webliix! Your client portal account has been created successfully.\n\n"
+                        + "Client Portal Login Credentials:\n"
+                        + "• Portal URL: https://login.webliix.com\n"
+                        + "• Email: " + rawEmail + "\n"
+                        + "• Default Password: " + defaultPassword + "\n\n"
+                        + "Log in at https://login.webliix.com to view project progress, milestone timelines, billing & invoices, and submit project updates or instructions.\n\n"
+                        + "Best regards,\nWebliix Client Operations\nnoreply@webliix.com";
+                emailService.sendEmail(rawEmail, subject, body);
             } catch (Exception ex) {
-                log.warn("Could not send automated welcome email to {}: {}", saved.getEmail(), ex.getMessage());
+                log.warn("Could not send automated welcome credential email to {}: {}", saved.getEmail(), ex.getMessage());
             }
         }
 
