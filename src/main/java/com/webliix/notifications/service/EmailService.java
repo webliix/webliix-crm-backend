@@ -6,6 +6,10 @@ public interface EmailService {
 
     void sendHtmlEmail(String to, String subject, String htmlBody);
 
+    void sendAutomatedHtmlEmail(String to, String subject, String htmlBody);
+
+    void sendConversationalEmail(String to, String subject, String body);
+
     void sendTemplateEmail(String to, String templateName, String subject);
 
     void sendNotificationEmail(String to, String title, String message);

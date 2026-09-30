@@ -25,22 +25,28 @@ public class PublicLeadEventListener {
     public void handlePublicLeadSubmitted(PublicLeadSubmittedEvent event) {
         log.info("Processing PublicLeadSubmittedEvent for lead ID: {}, Email: {}", event.getLeadId(), event.getEmail());
 
-        // 1. Dispatch Automated Welcome Inquiry Confirmation Email
+        // 1. Dispatch Automated Welcome Inquiry Confirmation Email (via noreply@webliix.com)
         try {
             String emailSubject = "Thank you for contacting Webliix – Project Inquiry Received";
-            String emailBody = "Hello " + (event.getContactPerson() != null ? event.getContactPerson() : "Valued Customer") + ",\n\n"
-                    + "Thank you for reaching out to Webliix! We have successfully registered your project inquiry.\n\n"
-                    + "Inquiry Details:\n"
-                    + "• Service Requested: " + (event.getServiceRequested() != null ? event.getServiceRequested() : "General Consultation") + "\n"
-                    + "• Company: " + (event.getCompanyName() != null ? event.getCompanyName() : "Individual") + "\n"
-                    + "• Summary: \"" + (event.getRequirements() != null ? event.getRequirements() : "N/A") + "\"\n\n"
-                    + "Our engineering and solutions team is reviewing your requirements. We will get back to you within 2 business hours.\n\n"
-                    + "If you have any urgent attachments or details, feel free to reply directly to this email.\n\n"
-                    + "Best regards,\n"
-                    + "Webliix Engineering & Solutions Team\n"
-                    + "https://webliix.in";
+            String name = event.getContactPerson() != null && !event.getContactPerson().isBlank() ? event.getContactPerson() : "Valued Customer";
+            String service = event.getServiceRequested() != null && !event.getServiceRequested().isBlank() ? event.getServiceRequested() : "General Consultation";
+            String company = event.getCompanyName() != null && !event.getCompanyName().isBlank() ? event.getCompanyName() : "Individual / Startup";
+            String requirements = event.getRequirements() != null && !event.getRequirements().isBlank() ? event.getRequirements() : "N/A";
 
-            emailService.sendEmail(event.getEmail(), emailSubject, emailBody);
+            java.io.InputStream is = getClass().getResourceAsStream("/templates/emails/lead-inquiry-acknowledgment.html");
+            String htmlBody;
+            if (is != null) {
+                String template = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                htmlBody = template
+                        .replace("{{NAME}}", name)
+                        .replace("{{SERVICE}}", service)
+                        .replace("{{COMPANY}}", company)
+                        .replace("{{REQUIREMENTS}}", requirements);
+            } else {
+                htmlBody = "<p>Hello " + name + ", thank you for contacting Webliix regarding " + service + ". Our team will contact you shortly.</p>";
+            }
+
+            emailService.sendAutomatedHtmlEmail(event.getEmail(), emailSubject, htmlBody);
             log.info("Automated welcome email sent to {}", event.getEmail());
         } catch (Exception ex) {
             log.error("Failed to send automated lead welcome email to {}: {}", event.getEmail(), ex.getMessage());

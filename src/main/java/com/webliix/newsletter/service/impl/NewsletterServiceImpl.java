@@ -125,19 +125,16 @@ public class NewsletterServiceImpl implements NewsletterService {
 
     private void sendWelcomeEmail(NewsletterSubscriber sub) {
         try {
-            String unsubscribeUrl = "https://webliix.com/newsletter/unsubscribe?token=" + sub.getUnsubscribeToken();
-            String name = (sub.getName() != null && !sub.getName().isBlank()) ? sub.getName() : "there";
             String subject = "Welcome to Webliix Updates & Insights!";
-            String body = "Hello " + name + ",\n\n"
-                    + "Thank you for subscribing to Webliix Insights! You are now subscribed to receive our latest engineering articles, product updates, tech case studies, and enterprise software releases.\n\n"
-                    + "We respect your inbox and will only send relevant, high-impact content.\n\n"
-                    + "If you ever wish to stop receiving these emails, you can unsubscribe at any time using the link below:\n"
-                    + unsubscribeUrl + "\n\n"
-                    + "Warm regards,\n"
-                    + "The Webliix Team\n"
-                    + "https://webliix.in";
+            java.io.InputStream is = getClass().getResourceAsStream("/templates/emails/newsletter-welcome.html");
+            String htmlBody;
+            if (is != null) {
+                htmlBody = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } else {
+                htmlBody = "<p>Welcome to Webliix Insights! Thank you for subscribing.</p>";
+            }
 
-            emailService.sendEmail(sub.getEmail(), subject, body);
+            emailService.sendAutomatedHtmlEmail(sub.getEmail(), subject, htmlBody);
         } catch (Exception ex) {
             log.warn("Failed to dispatch newsletter welcome email to {}: {}", sub.getEmail(), ex.getMessage());
         }
