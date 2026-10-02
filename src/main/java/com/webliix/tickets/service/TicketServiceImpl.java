@@ -54,13 +54,17 @@ public class TicketServiceImpl implements TicketService {
         ticket.setPriority(ticket.getPriority() != null ? ticket.getPriority() : TicketPriority.MEDIUM);
         ticket.setCategory(ticket.getCategory() != null ? ticket.getCategory() : TicketCategory.SUPPORT);
 
-        if (request.getCustomerId() != null) {
+        if (request.getProjectId() != null) {
+            Project project = projectRepository.findById(request.getProjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + request.getProjectId()));
+            ticket.setProject(project);
+            if (ticket.getCustomer() == null && project.getCustomer() != null) {
+                ticket.setCustomer(project.getCustomer());
+            }
+        }
+        if (request.getCustomerId() != null && ticket.getCustomer() == null) {
             ticket.setCustomer(customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId())));
-        }
-        if (request.getProjectId() != null) {
-            ticket.setProject(projectRepository.findById(request.getProjectId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + request.getProjectId())));
         }
         if (request.getAssignedToId() != null) {
             ticket.setAssignedTo(employeeRepository.findById(request.getAssignedToId())
@@ -124,6 +128,22 @@ public class TicketServiceImpl implements TicketService {
     @Transactional(readOnly = true)
     public List<TicketResponse> getAllTickets() {
         return ticketRepository.findAll().stream()
+                .map(TicketMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TicketResponse> getTicketsByProject(Long projectId) {
+        return ticketRepository.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
+                .map(TicketMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TicketResponse> getTicketsByCustomer(Long customerId) {
+        return ticketRepository.findByCustomerIdOrderByCreatedAtDesc(customerId).stream()
                 .map(TicketMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -202,20 +222,32 @@ public class TicketServiceImpl implements TicketService {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + request.getEmployeeId()));
         ticket.setAssignedTo(employee);
+        if (ticket.getStatus() == TicketStatus.OPEN) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+        }
         ticket.setUpdatedAt(LocalDateTime.now());
-        return TicketMapper.toResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        TicketResponse response = TicketMapper.toResponse(saved);
+        notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "Ticket Assigned: " + saved.getTicketNumber(), "Assigned to " + response.getAssignedToName(), response);
+        return response;
     }
 
     @Override
     @Transactional
     public TicketCommentResponse addComment(Long id, CreateTicketCommentRequest request) {
         Ticket ticket = findTicketById(id);
-        TicketComment comment = TicketMapper.toEntity(request);
-        comment.setTicket(ticket);
-        comment.setCreatedAt(LocalDateTime.now());
+        if (ticket.getStatus() == TicketStatus.RESOLVED || ticket.getStatus() == TicketStatus.CLOSED) {
+            ticket.setStatus(TicketStatus.REOPENED);
+            ticket.setClosedAt(null);
+        } else if (ticket.getStatus() == TicketStatus.OPEN) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+        }
         ticket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
 
+        TicketComment comment = TicketMapper.toEntity(request);
+        comment.setTicket(ticket);
+        comment.setCreatedAt(LocalDateTime.now());
         TicketComment saved = commentRepository.save(comment);
         TicketCommentResponse response = TicketMapper.toResponse(saved);
         notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "New Chat Message on " + ticket.getTicketNumber(), saved.getComment(), response);

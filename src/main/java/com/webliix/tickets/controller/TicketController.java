@@ -28,11 +28,29 @@ public class TicketController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets() {
-        List<TicketResponse> response = ticketService.getAllTickets();
+    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets(@RequestParam(required = false) Long projectId,
+                                                                        @RequestParam(required = false) Long customerId) {
+        List<TicketResponse> response;
+        if (projectId != null) {
+            response = ticketService.getTicketsByProject(projectId);
+        } else if (customerId != null) {
+            response = ticketService.getTicketsByCustomer(customerId);
+        } else {
+            response = ticketService.getAllTickets();
+        }
         return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
                 .success(true)
                 .message("Tickets fetched")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTicketsByProject(@PathVariable Long projectId) {
+        List<TicketResponse> response = ticketService.getTicketsByProject(projectId);
+        return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
+                .success(true)
+                .message("Project tickets fetched")
                 .data(response)
                 .build());
     }

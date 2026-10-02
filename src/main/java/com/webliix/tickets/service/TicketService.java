@@ -12,6 +12,10 @@ public interface TicketService {
 
     List<TicketResponse> getAllTickets();
 
+    List<TicketResponse> getTicketsByProject(Long projectId);
+
+    List<TicketResponse> getTicketsByCustomer(Long customerId);
+
     TicketResponse getTicket(Long id);
 
     PublicTicketDetailsResponse getPublicTicket(String ticketNumber);

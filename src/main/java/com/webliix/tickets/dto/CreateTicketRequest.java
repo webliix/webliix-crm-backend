@@ -32,13 +32,10 @@ public class CreateTicketRequest {
 
     private Long assignedToId;
 
-    @NotNull
     private TicketPriority priority;
 
-    @NotNull
     private TicketStatus status;
 
-    @NotNull
     private TicketCategory category;
 
     private LocalDate dueDate;
