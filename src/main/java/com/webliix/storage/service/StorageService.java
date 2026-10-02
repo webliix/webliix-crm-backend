@@ -5,6 +5,8 @@ import com.webliix.storage.dto.UploadFileResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 public interface StorageService {
 
     UploadFileResponse uploadFile(MultipartFile file, Long tenantId, String module, Long referenceId) throws Exception;
@@ -14,4 +16,6 @@ public interface StorageService {
     void deleteFile(Long id) throws Exception;
 
     StoredFileResponse getMetadata(Long id);
+
+    List<StoredFileResponse> getFiles(String module, Long referenceId);
 }

@@ -52,4 +52,18 @@ public class StorageController {
     public ResponseEntity<StoredFileResponse> metadata(@PathVariable("id") Long id) {
         return ResponseEntity.ok(storageService.getMetadata(id));
     }
+
+    @GetMapping("/files")
+    public ResponseEntity<java.util.List<StoredFileResponse>> listFiles(
+            @RequestParam(value = "module", required = false) String module,
+            @RequestParam(value = "referenceId", required = false) Long referenceId) {
+        return ResponseEntity.ok(storageService.getFiles(module, referenceId));
+    }
+
+    @GetMapping("/module/{module}/{referenceId}")
+    public ResponseEntity<java.util.List<StoredFileResponse>> listFilesByModule(
+            @PathVariable("module") String module,
+            @PathVariable("referenceId") Long referenceId) {
+        return ResponseEntity.ok(storageService.getFiles(module, referenceId));
+    }
 }

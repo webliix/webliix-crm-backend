@@ -87,6 +87,26 @@ public class StorageServiceImpl implements StorageService {
     public StoredFileResponse getMetadata(Long id) {
         StoredFile storedFile = storedFileRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("StoredFile not found with id: " + id));
+        return mapToResponse(storedFile);
+    }
+
+    @Override
+    public List<StoredFileResponse> getFiles(String module, Long referenceId) {
+        List<StoredFile> files;
+        if (module != null && !module.isBlank() && referenceId != null) {
+            files = storedFileRepository.findByModuleAndReferenceIdOrderByCreatedAtDesc(module, referenceId);
+        } else if (module != null && !module.isBlank()) {
+            files = storedFileRepository.findByModuleOrderByCreatedAtDesc(module);
+        } else if (referenceId != null) {
+            files = storedFileRepository.findByReferenceIdOrderByCreatedAtDesc(referenceId);
+        } else {
+            files = storedFileRepository.findAllByOrderByCreatedAtDesc();
+        }
+        return files.stream().map(this::mapToResponse).toList();
+    }
+
+    private StoredFileResponse mapToResponse(StoredFile storedFile) {
+        if (storedFile == null) return null;
         return StoredFileResponse.builder()
                 .id(storedFile.getId())
                 .fileName(storedFile.getFileName())
