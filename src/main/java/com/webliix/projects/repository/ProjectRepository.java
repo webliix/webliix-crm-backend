@@ -20,6 +20,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByCustomerId(Long customerId);
 
+    Page<Project> findByCustomerId(Long customerId, Pageable pageable);
+
     Page<Project> findByCustomerEmail(String email, Pageable pageable);
 
     @org.springframework.data.jpa.repository.Query("SELECT p FROM Project p WHERE LOWER(p.customer.email) = LOWER(:email) AND (:search IS NULL OR LOWER(p.projectName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")

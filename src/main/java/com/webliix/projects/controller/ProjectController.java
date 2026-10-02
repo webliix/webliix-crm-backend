@@ -32,12 +32,13 @@ public class ProjectController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProjectResponse>>> getProjects(
+            @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             org.springframework.security.core.Authentication authentication
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ProjectResponse> response = projectService.getAllProjects(pageable, authentication);
+        Page<ProjectResponse> response = projectService.getAllProjects(customerId, pageable, authentication);
         return ResponseEntity.ok(ApiResponse.<Page<ProjectResponse>>builder()
                 .success(true)
                 .message("Projects fetched")

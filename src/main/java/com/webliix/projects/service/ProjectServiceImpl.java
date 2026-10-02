@@ -78,9 +78,17 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public Page<ProjectResponse> getAllProjects(Pageable pageable, org.springframework.security.core.Authentication auth) {
+        return getAllProjects(null, pageable, auth);
+    }
+
+    @Override
+    public Page<ProjectResponse> getAllProjects(Long customerId, Pageable pageable, org.springframework.security.core.Authentication auth) {
         if (isCustomer(auth)) {
             String email = auth != null ? auth.getName() : "";
             return projectRepository.findByCustomerEmail(email, pageable).map(ProjectMapper::toResponse);
+        }
+        if (customerId != null) {
+            return projectRepository.findByCustomerId(customerId, pageable).map(ProjectMapper::toResponse);
         }
         return projectRepository.findAll(pageable).map(ProjectMapper::toResponse);
     }
@@ -124,7 +132,18 @@ public class ProjectServiceImpl implements ProjectService {
 
     private boolean isCustomer(org.springframework.security.core.Authentication auth) {
         if (auth == null) return false;
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_USER") || a.getAuthority().equals("USER"));
+        boolean isStaff = auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority();
+            return "ROLE_ADMIN".equals(authName) || "ADMIN".equals(authName)
+                    || "ROLE_SUPER_ADMIN".equals(authName) || "SUPER_ADMIN".equals(authName)
+                    || "ROLE_MANAGER".equals(authName) || "MANAGER".equals(authName)
+                    || "ROLE_EMPLOYEE".equals(authName) || "EMPLOYEE".equals(authName);
+        });
+        if (isStaff) return false;
+        return auth.getAuthorities().stream().anyMatch(a -> 
+            "ROLE_USER".equals(a.getAuthority()) || "USER".equals(a.getAuthority())
+            || "ROLE_CUSTOMER".equals(a.getAuthority()) || "CUSTOMER".equals(a.getAuthority())
+        );
     }
 
     @Override

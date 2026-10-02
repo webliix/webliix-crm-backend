@@ -16,6 +16,8 @@ public interface ProjectService {
 
     Page<ProjectResponse> getAllProjects(Pageable pageable, Authentication auth);
 
+    Page<ProjectResponse> getAllProjects(Long customerId, Pageable pageable, Authentication auth);
+
     ProjectResponse updateProject(Long id, CreateProjectRequest request);
 
     void deleteProject(Long id);
