@@ -7,6 +7,9 @@ import com.webliix.tickets.dto.*;
 import com.webliix.tickets.entity.Ticket;
 import com.webliix.tickets.entity.TicketAttachment;
 import com.webliix.tickets.entity.TicketComment;
+import com.webliix.tickets.enums.TicketCategory;
+import com.webliix.tickets.enums.TicketPriority;
+import com.webliix.tickets.enums.TicketStatus;
 
 public class TicketMapper {
 
@@ -59,39 +62,53 @@ public class TicketMapper {
     }
 
     public static TicketResponse toResponse(Ticket ticket) {
+        if (ticket == null) return null;
+
         String customerName = null;
-        Customer customer = ticket.getCustomer();
-        if (customer != null) {
-            customerName = customer.getCompanyName() != null ? customer.getCompanyName() : customer.getContactPerson();
-        }
+        Long customerId = null;
+        try {
+            Customer customer = ticket.getCustomer();
+            if (customer != null) {
+                customerId = customer.getId();
+                customerName = customer.getCompanyName() != null ? customer.getCompanyName() : customer.getContactPerson();
+            }
+        } catch (Exception ignored) {}
 
         String projectName = null;
-        Project project = ticket.getProject();
-        if (project != null) {
-            projectName = project.getProjectName();
-        }
+        Long projectId = null;
+        try {
+            Project project = ticket.getProject();
+            if (project != null) {
+                projectId = project.getId();
+                projectName = project.getProjectName();
+            }
+        } catch (Exception ignored) {}
 
         String assignedToName = null;
-        Employee assigned = ticket.getAssignedTo();
-        if (assigned != null) {
-            assignedToName = assigned.getFirstName() + (assigned.getLastName() != null ? " " + assigned.getLastName() : "");
-        }
+        Long assignedToId = null;
+        try {
+            Employee assigned = ticket.getAssignedTo();
+            if (assigned != null) {
+                assignedToId = assigned.getId();
+                assignedToName = assigned.getFirstName() + (assigned.getLastName() != null ? " " + assigned.getLastName() : "");
+            }
+        } catch (Exception ignored) {}
 
         return TicketResponse.builder()
                 .id(ticket.getId())
                 .ticketNumber(ticket.getTicketNumber())
                 .title(ticket.getTitle())
                 .description(ticket.getDescription())
-                .customerId(customer != null ? customer.getId() : null)
+                .customerId(customerId)
                 .customerName(customerName)
-                .projectId(project != null ? project.getId() : null)
+                .projectId(projectId)
                 .projectName(projectName)
                 .createdBy(ticket.getCreatedBy())
-                .assignedToId(assigned != null ? assigned.getId() : null)
+                .assignedToId(assignedToId)
                 .assignedToName(assignedToName)
-                .priority(ticket.getPriority())
-                .status(ticket.getStatus())
-                .category(ticket.getCategory())
+                .priority(ticket.getPriority() != null ? ticket.getPriority() : TicketPriority.MEDIUM)
+                .status(ticket.getStatus() != null ? ticket.getStatus() : TicketStatus.OPEN)
+                .category(ticket.getCategory() != null ? ticket.getCategory() : TicketCategory.SUPPORT)
                 .dueDate(ticket.getDueDate())
                 .closedAt(ticket.getClosedAt())
                 .slaHours(ticket.getSlaHours())
@@ -112,7 +129,7 @@ public class TicketMapper {
     public static TicketCommentResponse toResponse(TicketComment comment) {
         return TicketCommentResponse.builder()
                 .id(comment.getId())
-                .ticketId(comment.getTicket().getId())
+                .ticketId(comment.getTicket() != null ? comment.getTicket().getId() : null)
                 .comment(comment.getComment())
                 .commentedBy(comment.getCommentedBy())
                 .createdAt(comment.getCreatedAt())
@@ -130,7 +147,7 @@ public class TicketMapper {
     public static TicketAttachmentResponse toResponse(TicketAttachment attachment) {
         return TicketAttachmentResponse.builder()
                 .id(attachment.getId())
-                .ticketId(attachment.getTicket().getId())
+                .ticketId(attachment.getTicket() != null ? attachment.getTicket().getId() : null)
                 .fileName(attachment.getFileName())
                 .filePath(attachment.getFilePath())
                 .fileType(attachment.getFileType())

@@ -300,11 +300,20 @@ public class TicketServiceImpl implements TicketService {
     @Transactional(readOnly = true)
     public TicketDashboardResponse getDashboard() {
         TicketDashboardResponse response = new TicketDashboardResponse();
-        response.setOpenTickets(ticketRepository.countByStatus(TicketStatus.OPEN));
-        response.setInProgressTickets(ticketRepository.countByStatus(TicketStatus.IN_PROGRESS));
-        response.setResolvedTickets(ticketRepository.countByStatus(TicketStatus.RESOLVED));
-        response.setCriticalTickets(ticketRepository.countByPriority(TicketPriority.CRITICAL));
-        response.setOverdueTickets(ticketRepository.countByDueDateBeforeAndStatusNot(LocalDate.now(), TicketStatus.CLOSED));
+        try {
+            response.setOpenTickets(ticketRepository.countByStatus(TicketStatus.OPEN));
+            response.setInProgressTickets(ticketRepository.countByStatus(TicketStatus.IN_PROGRESS));
+            response.setResolvedTickets(ticketRepository.countByStatus(TicketStatus.RESOLVED));
+            response.setCriticalTickets(ticketRepository.countByPriority(TicketPriority.CRITICAL));
+            response.setOverdueTickets(ticketRepository.countByDueDateBeforeAndStatusNot(LocalDate.now(), TicketStatus.CLOSED));
+        } catch (Exception e) {
+            List<Ticket> all = ticketRepository.findAll();
+            response.setOpenTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.OPEN).count());
+            response.setInProgressTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.IN_PROGRESS).count());
+            response.setResolvedTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.RESOLVED).count());
+            response.setCriticalTickets(all.stream().filter(t -> t.getPriority() == TicketPriority.CRITICAL).count());
+            response.setOverdueTickets(all.stream().filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()) && t.getStatus() != TicketStatus.CLOSED).count());
+        }
         return response;
     }
 
