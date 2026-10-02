@@ -58,6 +58,12 @@ public class Project {
 
     private Boolean billable;
 
+    @Column(name = "documentation_url", length = 500)
+    private String documentationUrl;
+
+    @Column(name = "architecture_notes", columnDefinition = "TEXT")
+    private String architectureNotes;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

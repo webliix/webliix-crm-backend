@@ -29,6 +29,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectCommentRepository commentRepository;
     private final CustomerRepository customerRepository;
     private final ProjectCodeGenerator codeGenerator;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest request) {
@@ -45,6 +46,21 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         Project saved = projectRepository.save(project);
+
+        if (request.getAutoGeneratePhases() == null || Boolean.TRUE.equals(request.getAutoGeneratePhases())) {
+            generateDefaultPhases(saved);
+        }
+
+        if (saved.getCustomer() != null && saved.getCustomer().getEmail() != null) {
+            eventPublisher.publishEvent(new com.webliix.notifications.event.ProjectCreatedEvent(
+                    this,
+                    saved.getId(),
+                    saved.getProjectName(),
+                    saved.getCustomer().getId(),
+                    saved.getCustomer().getEmail()
+            ));
+        }
+
         return ProjectMapper.toResponse(saved);
     }
 
@@ -247,6 +263,119 @@ public class ProjectServiceImpl implements ProjectService {
         return commentRepository.findByProjectIdAndTaskId(projectId, taskId).stream()
                 .map(ProjectMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public ProjectCommentResponse addProjectInstructionOrUpdate(Long projectId, CreateProjectCommentRequest request, org.springframework.security.core.Authentication auth) {
+        Project project = findProjectById(projectId);
+        ProjectComment comment = ProjectMapper.toEntity(request);
+        comment.setProjectId(projectId);
+
+        boolean isCust = isCustomer(auth) || "CLIENT".equalsIgnoreCase(request.getAuthorRole());
+        if (isCust) {
+            comment.setAuthorRole("CLIENT");
+            if (comment.getAuthorName() == null || comment.getAuthorName().isEmpty()) {
+                comment.setAuthorName(project.getCustomer() != null ? project.getCustomer().getContactPerson() : "Client");
+            }
+        } else {
+            comment.setAuthorRole("ADMIN");
+            if (comment.getAuthorName() == null || comment.getAuthorName().isEmpty()) {
+                comment.setAuthorName("Webliix Project Lead");
+            }
+        }
+
+        ProjectComment saved = commentRepository.save(comment);
+
+        if ("ADMIN".equalsIgnoreCase(saved.getAuthorRole()) && project.getCustomer() != null && project.getCustomer().getEmail() != null) {
+            eventPublisher.publishEvent(new com.webliix.notifications.event.ProjectUpdateEvent(
+                    this,
+                    project.getId(),
+                    project.getProjectName(),
+                    project.getCustomer().getEmail(),
+                    "New Project Update: " + project.getProjectName(),
+                    request.getMessage(),
+                    project.getProgressPercentage(),
+                    project.getStatus() != null ? project.getStatus().name() : "IN_PROGRESS"
+            ));
+        }
+
+        return ProjectMapper.toResponse(saved);
+    }
+
+    @Override
+    public List<ProjectCommentResponse> getProjectInstructionsAndUpdates(Long projectId) {
+        findProjectById(projectId);
+        return commentRepository.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
+                .map(ProjectMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ProjectResponse updateProjectProgress(Long projectId, Integer progressPercentage, ProjectStatus status, String updateNote) {
+        Project project = findProjectById(projectId);
+        if (progressPercentage != null) {
+            project.setProgressPercentage(progressPercentage);
+        }
+        if (status != null) {
+            project.setStatus(status);
+        }
+        project.setUpdatedAt(LocalDateTime.now());
+        Project updated = projectRepository.save(project);
+
+        if (updateNote != null && !updateNote.trim().isEmpty()) {
+            ProjectComment updateComment = ProjectComment.builder()
+                    .projectId(projectId)
+                    .authorName("Super Admin / Project Lead")
+                    .authorRole("ADMIN")
+                    .message("Progress Updated to " + (progressPercentage != null ? progressPercentage : project.getProgressPercentage()) + "%: " + updateNote)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            commentRepository.save(updateComment);
+        }
+
+        if (updated.getCustomer() != null && updated.getCustomer().getEmail() != null) {
+            eventPublisher.publishEvent(new com.webliix.notifications.event.ProjectUpdateEvent(
+                    this,
+                    updated.getId(),
+                    updated.getProjectName(),
+                    updated.getCustomer().getEmail(),
+                    "Project Status & Progress Updated: " + updated.getProjectName(),
+                    updateNote != null ? updateNote : ("Project progress is now " + updated.getProgressPercentage() + "% (" + updated.getStatus() + ")."),
+                    updated.getProgressPercentage(),
+                    updated.getStatus() != null ? updated.getStatus().name() : "IN_PROGRESS"
+            ));
+        }
+
+        return ProjectMapper.toResponse(updated);
+    }
+
+    private void generateDefaultPhases(Project project) {
+        LocalDate start = project.getStartDate() != null ? project.getStartDate() : LocalDate.now();
+        LocalDate end = project.getExpectedEndDate() != null ? project.getExpectedEndDate() : start.plusDays(45);
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(start, end);
+        if (totalDays <= 0) totalDays = 45;
+
+        createMilestoneHelper(project.getId(), "Phase 1: Discovery & Architecture Blueprint", 
+                "System requirements gathering, data schema definition, and API contract design.", start.plusDays((long) (totalDays * 0.15)));
+        createMilestoneHelper(project.getId(), "Phase 2: UI/UX & Interactive Prototyping", 
+                "Wireframing, design system layout, and frontend component architecture.", start.plusDays((long) (totalDays * 0.35)));
+        createMilestoneHelper(project.getId(), "Phase 3: Core Engineering & Backend Integration", 
+                "Database migrations, core business services, REST endpoints, and security layer.", start.plusDays((long) (totalDays * 0.70)));
+        createMilestoneHelper(project.getId(), "Phase 4: Quality Assurance & Security Hardening", 
+                "End-to-end integration testing, performance optimization, and vulnerability scans.", start.plusDays((long) (totalDays * 0.90)));
+        createMilestoneHelper(project.getId(), "Phase 5: Production Deployment & Client Handover", 
+                "Cloud infrastructure provisioning, domain & SSL mapping, documentation, and user onboarding.", end);
+    }
+
+    private void createMilestoneHelper(Long projectId, String title, String description, LocalDate dueDate) {
+        ProjectMilestone milestone = ProjectMilestone.builder()
+                .projectId(projectId)
+                .title(title)
+                .description(description)
+                .dueDate(dueDate)
+                .completed(false)
+                .build();
+        milestoneRepository.save(milestone);
     }
 
     @Override

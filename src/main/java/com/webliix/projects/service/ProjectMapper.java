@@ -20,6 +20,8 @@ public class ProjectMapper {
         project.setStatus(request.getStatus() != null ? request.getStatus() : com.webliix.projects.enums.ProjectStatus.PLANNING);
         project.setPriority(request.getPriority() != null ? request.getPriority() : com.webliix.projects.enums.ProjectPriority.MEDIUM);
         project.setBillable(request.getBillable() != null ? request.getBillable() : false);
+        project.setDocumentationUrl(request.getDocumentationUrl());
+        project.setArchitectureNotes(request.getArchitectureNotes());
         project.setProgressPercentage(0);
         return project;
     }
@@ -46,6 +48,8 @@ public class ProjectMapper {
         }
         response.setProgressPercentage(project.getProgressPercentage());
         response.setBillable(project.getBillable());
+        response.setDocumentationUrl(project.getDocumentationUrl());
+        response.setArchitectureNotes(project.getArchitectureNotes());
         response.setCreatedAt(project.getCreatedAt());
         response.setUpdatedAt(project.getUpdatedAt());
         return response;
@@ -78,6 +82,12 @@ public class ProjectMapper {
         }
         if (request.getBillable() != null) {
             project.setBillable(request.getBillable());
+        }
+        if (request.getDocumentationUrl() != null) {
+            project.setDocumentationUrl(request.getDocumentationUrl());
+        }
+        if (request.getArchitectureNotes() != null) {
+            project.setArchitectureNotes(request.getArchitectureNotes());
         }
     }
 
@@ -188,6 +198,8 @@ public class ProjectMapper {
     public static ProjectComment toEntity(CreateProjectCommentRequest request) {
         ProjectComment comment = new ProjectComment();
         comment.setAuthorId(request.getAuthorId());
+        comment.setAuthorName(request.getAuthorName());
+        comment.setAuthorRole(request.getAuthorRole() != null ? request.getAuthorRole() : "ADMIN");
         comment.setMessage(request.getMessage());
         comment.setCreatedAt(LocalDateTime.now());
         return comment;
@@ -199,6 +211,8 @@ public class ProjectMapper {
         response.setProjectId(comment.getProjectId());
         response.setTaskId(comment.getTaskId());
         response.setAuthorId(comment.getAuthorId());
+        response.setAuthorName(comment.getAuthorName());
+        response.setAuthorRole(comment.getAuthorRole());
         response.setMessage(comment.getMessage());
         response.setCreatedAt(comment.getCreatedAt());
         return response;

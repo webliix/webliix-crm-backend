@@ -11,6 +11,8 @@ public interface ProjectCommentRepository extends JpaRepository<ProjectComment, 
 
     List<ProjectComment> findByProjectId(Long projectId);
 
+    List<ProjectComment> findByProjectIdOrderByCreatedAtDesc(Long projectId);
+
     List<ProjectComment> findByProjectIdAndTaskId(Long projectId, Long taskId);
 }
 

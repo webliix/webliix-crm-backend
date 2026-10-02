@@ -48,6 +48,12 @@ public interface ProjectService {
 
     List<ProjectCommentResponse> getProjectComments(Long projectId, Long taskId);
 
+    ProjectCommentResponse addProjectInstructionOrUpdate(Long projectId, CreateProjectCommentRequest request, Authentication auth);
+
+    List<ProjectCommentResponse> getProjectInstructionsAndUpdates(Long projectId);
+
+    ProjectResponse updateProjectProgress(Long projectId, Integer progressPercentage, com.webliix.projects.enums.ProjectStatus status, String updateNote);
+
     ProjectDashboardResponse getDashboard();
 }
 

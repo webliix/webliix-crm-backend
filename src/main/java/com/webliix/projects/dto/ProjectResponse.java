@@ -27,6 +27,8 @@ public class ProjectResponse {
     private String customerCompanyName;
     private Integer progressPercentage;
     private Boolean billable;
+    private String documentationUrl;
+    private String architectureNotes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

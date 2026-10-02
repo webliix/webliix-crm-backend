@@ -242,5 +242,45 @@ public class ProjectController {
                 .data(response)
                 .build());
     }
+
+    @PostMapping("/{projectId}/comments")
+    public ResponseEntity<ApiResponse<ProjectCommentResponse>> addProjectInstructionOrUpdate(
+            @PathVariable Long projectId,
+            @RequestBody CreateProjectCommentRequest request,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        ProjectCommentResponse response = projectService.addProjectInstructionOrUpdate(projectId, request, authentication);
+        return ResponseEntity.ok(ApiResponse.<ProjectCommentResponse>builder()
+                .success(true)
+                .message("Project update / client instruction submitted successfully")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/{projectId}/comments")
+    public ResponseEntity<ApiResponse<List<ProjectCommentResponse>>> getProjectInstructionsAndUpdates(@PathVariable Long projectId) {
+        List<ProjectCommentResponse> response = projectService.getProjectInstructionsAndUpdates(projectId);
+        return ResponseEntity.ok(ApiResponse.<List<ProjectCommentResponse>>builder()
+                .success(true)
+                .message("Project updates and instructions fetched")
+                .data(response)
+                .build());
+    }
+
+    @PatchMapping("/{projectId}/progress")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<ProjectResponse>> updateProjectProgress(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) Integer progressPercentage,
+            @RequestParam(required = false) com.webliix.projects.enums.ProjectStatus status,
+            @RequestParam(required = false) String updateNote
+    ) {
+        ProjectResponse response = projectService.updateProjectProgress(projectId, progressPercentage, status, updateNote);
+        return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
+                .success(true)
+                .message("Project progress and status updated")
+                .data(response)
+                .build());
+    }
 }
 

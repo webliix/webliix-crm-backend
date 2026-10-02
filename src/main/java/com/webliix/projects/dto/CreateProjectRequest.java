@@ -20,5 +20,8 @@ public class CreateProjectRequest {
     private ProjectPriority priority;
     private Long customerId;
     private Boolean billable;
+    private String documentationUrl;
+    private String architectureNotes;
+    private Boolean autoGeneratePhases;
 }
 

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class NotificationEventListener {
 
     private final NotificationService notificationService;
+    private final com.webliix.notifications.service.EmailService emailService;
 
     @EventListener
     public void onLeadCreated(LeadCreatedEvent event) {
@@ -74,14 +75,48 @@ public class NotificationEventListener {
     @EventListener
     public void onProjectCreated(ProjectCreatedEvent event) {
         CreateNotificationRequest request = CreateNotificationRequest.builder()
-                .title("New Project Created")
-                .message("Project '" + event.getProjectName() + "' has been created for you.")
+                .title("New Project Created: " + event.getProjectName())
+                .message("Project '" + event.getProjectName() + "' has been created for you. You can track progress and milestones in your Client Portal.")
                 .recipient(event.getCustomerEmail())
                 .recipientType("CUSTOMER")
-                .channel(NotificationChannel.EMAIL)
+                .channel(NotificationChannel.IN_APP)
                 .referenceType(ReferenceType.PROJECT.name())
                 .referenceId(event.getProjectId())
                 .build();
         notificationService.createNotification(request);
+
+        if (event.getCustomerEmail() != null && !event.getCustomerEmail().isEmpty()) {
+            emailService.sendNotificationEmail(
+                    event.getCustomerEmail(),
+                    "Webliix Project Initiated: " + event.getProjectName(),
+                    "Hello, your project '" + event.getProjectName() + "' has been initiated at Webliix. " +
+                    "Standard phases and milestones have been configured. You can monitor the live development progress in the Webliix Client Portal."
+            );
+        }
+    }
+
+    @EventListener
+    public void onProjectUpdate(ProjectUpdateEvent event) {
+        CreateNotificationRequest request = CreateNotificationRequest.builder()
+                .title(event.getTitle() != null ? event.getTitle() : "Project Update: " + event.getProjectName())
+                .message(event.getMessage() != null ? event.getMessage() : "Project '" + event.getProjectName() + "' has been updated.")
+                .recipient(event.getCustomerEmail())
+                .recipientType("CUSTOMER")
+                .channel(NotificationChannel.IN_APP)
+                .referenceType(ReferenceType.PROJECT.name())
+                .referenceId(event.getProjectId())
+                .build();
+        notificationService.createNotification(request);
+
+        if (event.getCustomerEmail() != null && !event.getCustomerEmail().isEmpty()) {
+            String subject = "Project Update [" + event.getProjectName() + "] - " + (event.getStatus() != null ? event.getStatus() : "Progress " + event.getProgressPercentage() + "%");
+            String emailBody = "<p>Hello,</p>" +
+                    "<p>An update has been posted regarding your project <strong>" + event.getProjectName() + "</strong>:</p>" +
+                    "<blockquote>" + (event.getMessage() != null ? event.getMessage() : "Project milestone/status has been updated.") + "</blockquote>" +
+                    (event.getProgressPercentage() != null ? "<p><strong>Current Overall Progress:</strong> " + event.getProgressPercentage() + "%</p>" : "") +
+                    (event.getStatus() != null ? "<p><strong>Current Status:</strong> " + event.getStatus() + "</p>" : "") +
+                    "<p>Log in to your Webliix Client Portal to view full milestone breakdown, architecture specifications, and submit instructions.</p>";
+            emailService.sendAutomatedHtmlEmail(event.getCustomerEmail(), subject, emailBody);
+        }
     }
 }

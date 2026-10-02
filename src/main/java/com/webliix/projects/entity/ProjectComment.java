@@ -27,6 +27,12 @@ public class ProjectComment {
     @Column(name = "author_id")
     private Long authorId;
 
+    @Column(name = "author_name")
+    private String authorName;
+
+    @Column(name = "author_role")
+    private String authorRole;
+
     @Column(columnDefinition = "TEXT")
     private String message;
 

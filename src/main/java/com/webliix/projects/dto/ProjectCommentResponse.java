@@ -11,6 +11,8 @@ public class ProjectCommentResponse {
     private Long projectId;
     private Long taskId;
     private Long authorId;
+    private String authorName;
+    private String authorRole;
     private String message;
     private LocalDateTime createdAt;
 }
