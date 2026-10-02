@@ -169,6 +169,13 @@
             <version>1.18.3</version>
         </dependency>
 
+        <!-- H2 In-Memory Database for Fast Integration Testing -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
     <dependencyManagement>
         <dependencies>
