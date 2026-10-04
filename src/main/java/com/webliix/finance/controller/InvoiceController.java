@@ -20,16 +20,20 @@ public class InvoiceController {
     private final InvoiceService invoiceService;
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<InvoiceResponse>> create(@RequestBody CreateInvoiceRequest req) {
         InvoiceResponse response = invoiceService.createInvoice(req);
         return ResponseEntity.ok(ApiResponse.<InvoiceResponse>builder().success(true).message("Invoice created successfully").data(response).build());
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<InvoiceResponse>>> list(@RequestParam(defaultValue = "0") int page,
-                                                                    @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<ApiResponse<Page<InvoiceResponse>>> list(
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<InvoiceResponse> result = invoiceService.getAllInvoices(pageable);
+        Page<InvoiceResponse> result = invoiceService.getAllInvoices(projectId, customerId, pageable);
         return ResponseEntity.ok(ApiResponse.<Page<InvoiceResponse>>builder().success(true).message("Invoices fetched").data(result).build());
     }
 

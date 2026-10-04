@@ -57,5 +57,10 @@ public interface ProjectService {
     ProjectResponse updateProjectProgress(Long projectId, Integer progressPercentage, com.webliix.projects.enums.ProjectStatus status, String updateNote);
 
     ProjectDashboardResponse getDashboard();
+
+    ProjectBillingResponse getProjectBilling(Long projectId, Authentication auth);
+
+    List<com.webliix.finance.dto.InvoiceResponse> getProjectInvoices(Long projectId, Authentication auth);
 }
+
 

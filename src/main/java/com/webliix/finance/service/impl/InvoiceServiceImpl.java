@@ -34,12 +34,35 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final CustomerRepository customerRepository;
     private final ProjectRepository projectRepository;
+    private final com.webliix.projects.repository.ProjectMemberRepository projectMemberRepository;
+    private final com.webliix.security.repository.UserRepository userRepository;
     private final EmailService emailService;
 
     @Override
     @Transactional
     public InvoiceResponse createInvoice(CreateInvoiceRequest req) {
         Invoice invoice = InvoiceMapper.toEntity(req);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isStaff = auth != null && auth.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority().toUpperCase();
+            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("HR");
+        });
+        if (!isStaff && auth != null) {
+            boolean isEmployee = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().toUpperCase().contains("EMPLOYEE"));
+            if (isEmployee) {
+                if (req.getProjectId() == null) {
+                    throw new IllegalArgumentException("Employees must specify an assigned projectId to create an invoice/bill.");
+                }
+                String email = auth.getName().trim().toLowerCase();
+                com.webliix.security.entity.User user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+                boolean isAssigned = projectMemberRepository.existsByProjectIdAndUserId(req.getProjectId(), user.getId());
+                if (!isAssigned) {
+                    throw new org.springframework.security.access.AccessDeniedException("You are not assigned to this project and cannot bill it.");
+                }
+            }
+        }
 
         Customer customer = null;
         if (req.getCustomerId() != null) {
@@ -51,6 +74,10 @@ public class InvoiceServiceImpl implements InvoiceService {
             Project project = projectRepository.findById(req.getProjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
             invoice.setProject(project);
+            if (customer == null && project.getCustomer() != null) {
+                customer = project.getCustomer();
+                invoice.setCustomer(customer);
+            }
         }
 
         String prefix = InvoiceNumberGenerator.currentPrefix();
@@ -93,10 +120,29 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public Page<InvoiceResponse> getAllInvoices(Pageable pageable) {
+        return getAllInvoices(null, null, pageable);
+    }
+
+    @Override
+    public Page<InvoiceResponse> getAllInvoices(Long projectId, Long customerId, Pageable pageable) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (isCustomer(auth)) {
             String email = auth != null ? auth.getName() : "";
+            if (projectId != null) {
+                Project project = projectRepository.findById(projectId).orElse(null);
+                if (project == null || project.getCustomer() == null || !project.getCustomer().getEmail().equalsIgnoreCase(email)) {
+                    throw new org.springframework.security.access.AccessDeniedException("Access denied: You do not own this project.");
+                }
+                return invoiceRepository.findByProjectId(projectId, pageable).map(InvoiceMapper::toResponse);
+            }
             return invoiceRepository.findByCustomerEmail(email, pageable).map(InvoiceMapper::toResponse);
+        }
+
+        if (projectId != null) {
+            return invoiceRepository.findByProjectId(projectId, pageable).map(InvoiceMapper::toResponse);
+        }
+        if (customerId != null) {
+            return invoiceRepository.findByCustomerId(customerId, pageable).map(InvoiceMapper::toResponse);
         }
         return invoiceRepository.findAll(pageable).map(InvoiceMapper::toResponse);
     }

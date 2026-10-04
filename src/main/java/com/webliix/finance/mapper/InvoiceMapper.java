@@ -58,8 +58,16 @@ public class InvoiceMapper {
         InvoiceResponse res = new InvoiceResponse();
         res.setId(invoice.getId());
         res.setInvoiceNumber(invoice.getInvoiceNumber());
-        res.setCustomerId(invoice.getCustomer() == null ? null : invoice.getCustomer().getId());
-        res.setProjectId(invoice.getProject() == null ? null : invoice.getProject().getId());
+        if (invoice.getCustomer() != null) {
+            res.setCustomerId(invoice.getCustomer().getId());
+            res.setCustomerName(invoice.getCustomer().getContactPerson());
+            res.setCustomerCompanyName(invoice.getCustomer().getCompanyName());
+        }
+        if (invoice.getProject() != null) {
+            res.setProjectId(invoice.getProject().getId());
+            res.setProjectName(invoice.getProject().getProjectName());
+            res.setProjectCode(invoice.getProject().getProjectCode());
+        }
         res.setIssueDate(invoice.getIssueDate());
         res.setDueDate(invoice.getDueDate());
         res.setSubtotal(invoice.getSubtotal());

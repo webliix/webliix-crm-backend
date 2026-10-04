@@ -12,6 +12,8 @@ public interface InvoiceService {
 
     Page<InvoiceResponse> getAllInvoices(Pageable pageable);
 
+    Page<InvoiceResponse> getAllInvoices(Long projectId, Long customerId, Pageable pageable);
+
     InvoiceResponse getInvoice(Long id);
 
     InvoiceResponse updateInvoice(Long id, CreateInvoiceRequest req);

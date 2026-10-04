@@ -13,9 +13,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +32,9 @@ public class ProjectServiceImpl implements ProjectService {
     private final CustomerRepository customerRepository;
     private final ProjectCodeGenerator codeGenerator;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final com.webliix.finance.repository.InvoiceRepository invoiceRepository;
+    private final com.webliix.security.repository.UserRepository userRepository;
+    private final com.webliix.hr.paymentsubmission.repository.PaymentSubmissionRepository paymentSubmissionRepository;
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest request) {
@@ -451,5 +456,135 @@ public class ProjectServiceImpl implements ProjectService {
         List<ProjectComment> comments = commentRepository.findByProjectId(projectId);
         commentRepository.deleteAll(comments);
     }
+
+    @Override
+    public ProjectBillingResponse getProjectBilling(Long projectId, org.springframework.security.core.Authentication auth) {
+        Project project = findProjectById(projectId);
+        validateBillingAccess(project, auth);
+
+        List<com.webliix.finance.entity.Invoice> invoices = invoiceRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+        List<com.webliix.hr.paymentsubmission.entity.PaymentSubmission> submissions = paymentSubmissionRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+
+        BigDecimal budget = project.getBudget() != null ? project.getBudget() : BigDecimal.ZERO;
+        BigDecimal totalBilled = invoices.stream()
+                .filter(i -> i.getStatus() != com.webliix.finance.enums.InvoiceStatus.CANCELLED)
+                .map(com.webliix.finance.entity.Invoice::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalPaid = invoices.stream()
+                .filter(i -> i.getStatus() != com.webliix.finance.enums.InvoiceStatus.CANCELLED)
+                .map(com.webliix.finance.entity.Invoice::getPaidAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal pendingDueOnInvoices = invoices.stream()
+                .filter(i -> i.getStatus() != com.webliix.finance.enums.InvoiceStatus.CANCELLED)
+                .map(com.webliix.finance.entity.Invoice::getPendingAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal remainingProjectBalance = budget.compareTo(BigDecimal.ZERO) > 0
+                ? (budget.compareTo(totalPaid) > 0 ? budget.subtract(totalPaid) : BigDecimal.ZERO)
+                : pendingDueOnInvoices;
+
+        BigDecimal unbilledContractAmount = budget.compareTo(totalBilled) > 0
+                ? budget.subtract(totalBilled)
+                : BigDecimal.ZERO;
+
+        return ProjectBillingResponse.builder()
+                .projectId(project.getId())
+                .projectCode(project.getProjectCode())
+                .projectName(project.getProjectName())
+                .customerId(project.getCustomer() != null ? project.getCustomer().getId() : null)
+                .customerName(project.getCustomer() != null ? project.getCustomer().getContactPerson() : null)
+                .customerCompanyName(project.getCustomer() != null ? project.getCustomer().getCompanyName() : null)
+                .budget(budget)
+                .totalBilled(totalBilled)
+                .totalPaid(totalPaid)
+                .pendingDueOnInvoices(pendingDueOnInvoices)
+                .remainingProjectBalance(remainingProjectBalance)
+                .unbilledContractAmount(unbilledContractAmount)
+                .invoices(invoices.stream().map(com.webliix.finance.mapper.InvoiceMapper::toResponse).collect(Collectors.toList()))
+                .paymentSubmissions(submissions.stream().map(this::toPaymentSubmissionResponse).collect(Collectors.toList()))
+                .build();
+    }
+
+    @Override
+    public List<com.webliix.finance.dto.InvoiceResponse> getProjectInvoices(Long projectId, org.springframework.security.core.Authentication auth) {
+        Project project = findProjectById(projectId);
+        validateBillingAccess(project, auth);
+        return invoiceRepository.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
+                .map(com.webliix.finance.mapper.InvoiceMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private void validateBillingAccess(Project project, org.springframework.security.core.Authentication auth) {
+        if (auth == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required to access project billing.");
+        }
+        if (isCustomer(auth)) {
+            String email = auth.getName();
+            if (project.getCustomer() == null || project.getCustomer().getEmail() == null
+                    || !project.getCustomer().getEmail().equalsIgnoreCase(email)) {
+                throw new org.springframework.security.access.AccessDeniedException("Access denied: You do not own this project.");
+            }
+            return;
+        }
+
+        boolean isAdminOrManager = auth.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority().toUpperCase();
+            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("HR");
+        });
+        if (isAdminOrManager) {
+            return;
+        }
+
+        boolean isEmployee = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().toUpperCase().contains("EMPLOYEE"));
+        if (isEmployee) {
+            String email = auth.getName().trim().toLowerCase();
+            com.webliix.security.entity.User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null && memberRepository.existsByProjectIdAndUserId(project.getId(), user.getId())) {
+                return;
+            }
+        }
+
+        throw new org.springframework.security.access.AccessDeniedException("Access denied: You do not have permission to view billing for this project.");
+    }
+
+    private com.webliix.hr.paymentsubmission.dto.PaymentSubmissionResponse toPaymentSubmissionResponse(com.webliix.hr.paymentsubmission.entity.PaymentSubmission s) {
+        com.webliix.hr.paymentsubmission.dto.PaymentSubmissionResponse res = new com.webliix.hr.paymentsubmission.dto.PaymentSubmissionResponse();
+        res.setId(s.getId());
+        if (s.getEmployee() != null) {
+            res.setEmployeeId(s.getEmployee().getId());
+            res.setEmployeeName(s.getEmployee().getFirstName() + " " + s.getEmployee().getLastName());
+        }
+        if (s.getProject() != null) {
+            res.setProjectId(s.getProject().getId());
+            res.setProjectName(s.getProject().getProjectName());
+        }
+        if (s.getCustomer() != null) {
+            res.setCustomerId(s.getCustomer().getId());
+            res.setCustomerName(s.getCustomer().getCompanyName());
+        }
+        res.setAmount(s.getAmount());
+        res.setCurrency(s.getCurrency());
+        res.setPaymentDate(s.getPaymentDate());
+        res.setPaymentMethod(s.getPaymentMethod());
+        res.setReferenceNumber(s.getReferenceNumber());
+        res.setNotes(s.getNotes());
+        res.setStatus(s.getStatus());
+        res.setReviewedBy(s.getReviewedBy());
+        res.setReviewNotes(s.getReviewNotes());
+        res.setReviewedAt(s.getReviewedAt());
+        if (s.getLinkedInvoice() != null) {
+            res.setLinkedInvoiceId(s.getLinkedInvoice().getId());
+            res.setLinkedInvoiceNumber(s.getLinkedInvoice().getInvoiceNumber());
+        }
+        res.setCreatedAt(s.getCreatedAt());
+        res.setUpdatedAt(s.getUpdatedAt());
+        return res;
+    }
 }
+
 

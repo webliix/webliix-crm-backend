@@ -298,4 +298,33 @@ public class ProjectController {
                 .data(response)
                 .build());
     }
+
+    @GetMapping("/{projectId}/billing")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ProjectBillingResponse>> getProjectBilling(
+            @PathVariable Long projectId,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        ProjectBillingResponse response = projectService.getProjectBilling(projectId, authentication);
+        return ResponseEntity.ok(ApiResponse.<ProjectBillingResponse>builder()
+                .success(true)
+                .message("Project billing summary fetched")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/{projectId}/invoices")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<com.webliix.finance.dto.InvoiceResponse>>> getProjectInvoices(
+            @PathVariable Long projectId,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        List<com.webliix.finance.dto.InvoiceResponse> response = projectService.getProjectInvoices(projectId, authentication);
+        return ResponseEntity.ok(ApiResponse.<List<com.webliix.finance.dto.InvoiceResponse>>builder()
+                .success(true)
+                .message("Project invoices fetched")
+                .data(response)
+                .build());
+    }
 }
+

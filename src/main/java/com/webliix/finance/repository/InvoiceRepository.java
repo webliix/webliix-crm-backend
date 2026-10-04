@@ -14,6 +14,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findTopByInvoiceNumberStartingWithOrderByIdDesc(String prefix);
 
     List<Invoice> findByCustomerId(Long customerId);
+    Page<Invoice> findByCustomerId(Long customerId, Pageable pageable);
+
+    List<Invoice> findByProjectId(Long projectId);
+    Page<Invoice> findByProjectId(Long projectId, Pageable pageable);
+    List<Invoice> findByProjectIdOrderByCreatedAtDesc(Long projectId);
 
     Page<Invoice> findByCustomerEmail(String email, Pageable pageable);
 

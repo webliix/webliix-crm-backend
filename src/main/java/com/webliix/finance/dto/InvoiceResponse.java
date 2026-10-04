@@ -13,7 +13,11 @@ public class InvoiceResponse {
     private Long id;
     private String invoiceNumber;
     private Long customerId;
+    private String customerName;
+    private String customerCompanyName;
     private Long projectId;
+    private String projectName;
+    private String projectCode;
     private LocalDate issueDate;
     private LocalDate dueDate;
     private BigDecimal subtotal;
