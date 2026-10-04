@@ -11,6 +11,8 @@ public class EmployeeRequest {
     private String firstName;
     private String lastName;
     private String email;
+    // Password is only used for account provisioning or password reset by authorized admins
+    private String password;
     private String phone;
     private Long departmentId;
     private Long designationId;

@@ -9,11 +9,14 @@ import com.webliix.crm.lead.repository.LeadRepository;
 import com.webliix.crm.lead.service.LeadConversionService;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeadConversionServiceImpl implements LeadConversionService {
@@ -23,17 +26,26 @@ public class LeadConversionServiceImpl implements LeadConversionService {
     private final CustomerCodeGenerator customerCodeGenerator;
 
     @Override
+    @Transactional
     public Customer convertLead(Long leadId) {
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + leadId));
 
-        if (lead.getStatus() != LeadStatus.WON) {
-            throw new IllegalStateException("Lead must be WON before conversion");
+        if (Boolean.TRUE.equals(lead.getConverted())) {
+            throw new IllegalArgumentException("Lead #" + leadId + " has already been converted into a customer.");
         }
 
+        String companyName = lead.getCompanyName() != null && !lead.getCompanyName().isBlank()
+                ? lead.getCompanyName()
+                : (lead.getContactPerson() != null && !lead.getContactPerson().isBlank() ? lead.getContactPerson() : "Client #" + leadId);
+
+        String contactPerson = lead.getContactPerson() != null && !lead.getContactPerson().isBlank()
+                ? lead.getContactPerson()
+                : companyName;
+
         Customer customer = Customer.builder()
-                .companyName(lead.getCompanyName())
-                .contactPerson(lead.getContactPerson())
+                .companyName(companyName)
+                .contactPerson(contactPerson)
                 .email(lead.getEmail())
                 .phone(lead.getPhone())
                 .website(lead.getWebsite())
@@ -50,10 +62,15 @@ public class LeadConversionServiceImpl implements LeadConversionService {
                 .build();
 
         Customer savedCustomer = customerRepository.save(customer);
+
+        // Mark lead as WON and CONVERTED
+        lead.setStatus(LeadStatus.WON);
         lead.setConverted(true);
         lead.setConvertedAt(LocalDateTime.now());
+        lead.setUpdatedAt(LocalDateTime.now());
         leadRepository.save(lead);
 
+        log.info("Lead #{} converted successfully into Customer #{} ({})", leadId, savedCustomer.getId(), savedCustomer.getCustomerCode());
         return savedCustomer;
     }
 }

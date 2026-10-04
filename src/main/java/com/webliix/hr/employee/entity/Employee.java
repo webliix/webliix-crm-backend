@@ -3,6 +3,7 @@ package com.webliix.hr.employee.entity;
 import com.webliix.hr.department.entity.Department;
 import com.webliix.hr.designation.entity.Designation;
 import com.webliix.hr.employee.enums.EmploymentType;
+import com.webliix.security.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -64,6 +65,10 @@ public class Employee {
 
     @Column(name = "emergency_contact")
     private String emergencyContact;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

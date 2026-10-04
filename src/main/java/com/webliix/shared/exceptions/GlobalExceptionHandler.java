@@ -81,6 +81,28 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex) {
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.builder()
+                        .success(false)
+                        .message("Access denied: " + ex.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ApiResponse<?>> handleIllegalArguments(
+            RuntimeException ex) {
+
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.builder()
+                        .success(false)
+                        .message(ex.getMessage() != null ? ex.getMessage() : "Invalid operation or request state")
+                        .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGeneral(
             Exception ex) {

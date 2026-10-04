@@ -28,6 +28,8 @@ public class EmployeeResponse {
     private String state;
     private String country;
     private String emergencyContact;
+    private Long userId;
+    private Boolean hasLoginAccount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

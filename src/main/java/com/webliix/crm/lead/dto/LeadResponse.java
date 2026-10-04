@@ -27,6 +27,8 @@ public class LeadResponse {
     private LeadSource source;
     private LocalDate nextFollowUpDate;
     private String notes;
+    private Boolean converted;
+    private LocalDateTime convertedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

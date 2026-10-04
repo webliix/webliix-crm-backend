@@ -6,6 +6,7 @@ import com.webliix.tickets.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class TicketController {
     private final TicketService ticketService;
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('TICKETS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER', 'ROLE_USER', 'CUSTOMER')")
     public ResponseEntity<ApiResponse<TicketResponse>> createTicket(@Valid @RequestBody CreateTicketRequest request) {
         TicketResponse response = ticketService.createTicket(request);
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
@@ -28,6 +30,7 @@ public class TicketController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('TICKETS_VIEW', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets(@RequestParam(required = false) Long projectId,
                                                                         @RequestParam(required = false) Long customerId) {
         List<TicketResponse> response;
@@ -46,6 +49,7 @@ public class TicketController {
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<TicketResponse>>> getTicketsByProject(@PathVariable Long projectId) {
         List<TicketResponse> response = ticketService.getTicketsByProject(projectId);
         return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
@@ -56,6 +60,7 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TicketResponse>> getTicket(@PathVariable Long id) {
         TicketResponse response = ticketService.getTicket(id);
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
@@ -66,6 +71,7 @@ public class TicketController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('TICKETS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<TicketResponse>> updateTicket(@PathVariable Long id,
                                                                     @RequestBody UpdateTicketRequest request) {
         TicketResponse response = ticketService.updateTicket(id, request);
@@ -77,6 +83,7 @@ public class TicketController {
     }
 
     @PutMapping("/{id}/assign")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<TicketResponse>> assignTicket(@PathVariable Long id,
                                                                     @Valid @RequestBody AssignTicketRequest request) {
         TicketResponse response = ticketService.assignTicket(id, request);
@@ -88,6 +95,7 @@ public class TicketController {
     }
 
     @GetMapping("/{id}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<TicketCommentResponse>>> getComments(@PathVariable Long id) {
         List<TicketCommentResponse> response = ticketService.getTicketComments(id);
         return ResponseEntity.ok(ApiResponse.<List<TicketCommentResponse>>builder()
@@ -98,6 +106,7 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TicketCommentResponse>> addComment(@PathVariable Long id,
                                                                          @Valid @RequestBody CreateTicketCommentRequest request) {
         TicketCommentResponse response = ticketService.addComment(id, request);
@@ -109,6 +118,7 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/attachments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TicketAttachmentResponse>> addAttachment(@PathVariable Long id,
                                                                                @Valid @RequestBody CreateTicketAttachmentRequest request) {
         TicketAttachmentResponse response = ticketService.addAttachment(id, request);
@@ -120,6 +130,7 @@ public class TicketController {
     }
 
     @GetMapping("/dashboard")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<TicketDashboardResponse>> getDashboard() {
         TicketDashboardResponse response = ticketService.getDashboard();
         return ResponseEntity.ok(ApiResponse.<TicketDashboardResponse>builder()

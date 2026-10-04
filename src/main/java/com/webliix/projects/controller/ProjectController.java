@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +21,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(@RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.createProject(request);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
@@ -76,6 +77,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(@PathVariable Long id, @RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.updateProject(id, request);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
@@ -86,6 +88,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -105,6 +108,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/members")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMemberResponse>> addProjectMember(@PathVariable Long projectId,
                                                                               @RequestBody CreateProjectMemberRequest request) {
         ProjectMemberResponse response = projectService.addProjectMember(projectId, request);
@@ -126,6 +130,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/members/{memberId}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Void>> removeProjectMember(@PathVariable Long projectId,
                                                                  @PathVariable Long memberId) {
         projectService.removeProjectMember(projectId, memberId);
@@ -136,6 +141,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/milestones")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMilestoneResponse>> addProjectMilestone(@PathVariable Long projectId,
                                                                                     @RequestBody CreateProjectMilestoneRequest request) {
         ProjectMilestoneResponse response = projectService.addProjectMilestone(projectId, request);
@@ -157,6 +163,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{projectId}/milestones/{milestoneId}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMilestoneResponse>> updateProjectMilestone(@PathVariable Long projectId,
                                                                                        @PathVariable Long milestoneId,
                                                                                        @RequestBody CreateProjectMilestoneRequest request) {
@@ -169,6 +176,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/milestones/{milestoneId}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deleteProjectMilestone(@PathVariable Long projectId,
                                                                     @PathVariable Long milestoneId) {
         projectService.deleteProjectMilestone(projectId, milestoneId);
@@ -179,6 +187,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/tasks")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> addProjectTask(@PathVariable Long projectId,
                                                                            @RequestBody CreateProjectTaskRequest request) {
         ProjectTaskResponse response = projectService.addProjectTask(projectId, request);
@@ -200,6 +209,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{projectId}/tasks/{taskId}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> updateProjectTask(@PathVariable Long projectId,
                                                                               @PathVariable Long taskId,
                                                                               @RequestBody CreateProjectTaskRequest request) {
@@ -212,6 +222,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/tasks/{taskId}")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deleteProjectTask(@PathVariable Long projectId,
                                                                @PathVariable Long taskId) {
         projectService.deleteProjectTask(projectId, taskId);
@@ -222,6 +233,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/tasks/{taskId}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectCommentResponse>> addProjectComment(@PathVariable Long projectId,
                                                                                  @PathVariable Long taskId,
                                                                                  @RequestBody CreateProjectCommentRequest request) {
@@ -234,6 +246,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/tasks/{taskId}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectCommentResponse>>> getProjectComments(@PathVariable Long projectId,
                                                                                          @PathVariable Long taskId) {
         List<ProjectCommentResponse> response = projectService.getProjectComments(projectId, taskId);
@@ -245,6 +258,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectCommentResponse>> addProjectInstructionOrUpdate(
             @PathVariable Long projectId,
             @RequestBody CreateProjectCommentRequest request,
@@ -259,6 +273,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}/comments")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectCommentResponse>>> getProjectInstructionsAndUpdates(@PathVariable Long projectId) {
         List<ProjectCommentResponse> response = projectService.getProjectInstructionsAndUpdates(projectId);
         return ResponseEntity.ok(ApiResponse.<List<ProjectCommentResponse>>builder()
@@ -269,7 +284,7 @@ public class ProjectController {
     }
 
     @PatchMapping("/{projectId}/progress")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProjectProgress(
             @PathVariable Long projectId,
             @RequestParam(required = false) Integer progressPercentage,
@@ -284,4 +299,3 @@ public class ProjectController {
                 .build());
     }
 }
-
