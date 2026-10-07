@@ -59,6 +59,13 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
         return employeeRepository.findByUserId(user.getId())
+                .or(() -> employeeRepository.findByEmail(email).map(emp -> {
+                    if (emp.getUser() == null) {
+                        emp.setUser(user);
+                        return employeeRepository.save(emp);
+                    }
+                    return emp;
+                }))
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No employee profile linked to your account. Contact your administrator."));
     }

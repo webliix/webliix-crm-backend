@@ -41,9 +41,17 @@ public class EmployeeSelfController {
         if (auth == null || auth.getName() == null) {
             throw new AccessDeniedException("Authentication required");
         }
-        User user = userRepository.findByEmail(auth.getName().trim().toLowerCase())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + auth.getName()));
+        String email = auth.getName().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
         return employeeRepository.findByUserId(user.getId())
+                .or(() -> employeeRepository.findByEmail(email).map(emp -> {
+                    if (emp.getUser() == null) {
+                        emp.setUser(user);
+                        return employeeRepository.save(emp);
+                    }
+                    return emp;
+                }))
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No employee profile linked to your account. Contact your administrator."));
     }
@@ -69,12 +77,20 @@ public class EmployeeSelfController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getMyProjects(Authentication auth) {
         Employee employee = resolveEmployee(auth);
-        if (employee.getUser() == null) {
+        java.util.Set<Long> candidateIds = new java.util.HashSet<>();
+        if (employee.getUser() != null) {
+            candidateIds.add(employee.getUser().getId());
+        }
+        if (employee.getId() != null) {
+            candidateIds.add(employee.getId());
+        }
+
+        if (candidateIds.isEmpty()) {
             return ResponseEntity.ok(ApiResponse.<List<ProjectResponse>>builder()
                     .success(true).message("Assigned projects fetched").data(Collections.emptyList()).build());
         }
 
-        List<Long> projectIds = projectMemberRepository.findByUserId(employee.getUser().getId())
+        List<Long> projectIds = projectMemberRepository.findByUserIdIn(candidateIds)
                 .stream()
                 .map(pm -> pm.getProjectId())
                 .distinct()

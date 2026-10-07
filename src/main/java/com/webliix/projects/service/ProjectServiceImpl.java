@@ -35,6 +35,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final com.webliix.finance.repository.InvoiceRepository invoiceRepository;
     private final com.webliix.security.repository.UserRepository userRepository;
     private final com.webliix.hr.paymentsubmission.repository.PaymentSubmissionRepository paymentSubmissionRepository;
+    private final com.webliix.hr.employee.repository.EmployeeRepository employeeRepository;
 
     @Override
     public ProjectResponse createProject(CreateProjectRequest request) {
@@ -154,18 +155,78 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectMemberResponse addProjectMember(Long projectId, CreateProjectMemberRequest request) {
         Project project = findProjectById(projectId);
-        ProjectMember member = ProjectMapper.toEntity(request);
+        Long userId = request.getUserId();
+        Long employeeId = request.getEmployeeId();
+
+        if (userId == null && employeeId != null) {
+            com.webliix.hr.employee.entity.Employee emp = employeeRepository.findById(employeeId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + employeeId));
+            if (emp.getUser() != null) {
+                userId = emp.getUser().getId();
+            } else if (emp.getEmail() != null) {
+                com.webliix.security.entity.User u = userRepository.findByEmail(emp.getEmail().trim().toLowerCase()).orElse(null);
+                if (u != null) {
+                    emp.setUser(u);
+                    employeeRepository.save(emp);
+                    userId = u.getId();
+                }
+            }
+            if (userId == null) {
+                userId = emp.getId();
+            }
+        }
+
+        if (userId == null) {
+            throw new IllegalArgumentException("Either userId or employeeId must be provided");
+        }
+
+        if (memberRepository.existsByProjectIdAndUserId(project.getId(), userId)) {
+            throw new IllegalArgumentException("User/Employee is already a member of this project");
+        }
+
+        ProjectMember member = new ProjectMember();
         member.setProjectId(project.getId());
+        member.setUserId(userId);
+        member.setRoleInProject(request.getRoleInProject() != null && !request.getRoleInProject().isBlank() ? request.getRoleInProject() : "MEMBER");
+        member.setAssignedDate(request.getAssignedDate() != null ? request.getAssignedDate() : LocalDate.now());
         ProjectMember saved = memberRepository.save(member);
-        return ProjectMapper.toResponse(saved);
+        return enrichMemberResponse(saved);
     }
 
     @Override
     public List<ProjectMemberResponse> getProjectMembers(Long projectId) {
         findProjectById(projectId);
         return memberRepository.findByProjectId(projectId).stream()
-                .map(ProjectMapper::toResponse)
+                .map(this::enrichMemberResponse)
                 .collect(Collectors.toList());
+    }
+
+    private ProjectMemberResponse enrichMemberResponse(ProjectMember member) {
+        ProjectMemberResponse res = ProjectMapper.toResponse(member);
+        if (member.getUserId() != null) {
+            com.webliix.hr.employee.entity.Employee emp = employeeRepository.findByUserId(member.getUserId()).orElse(null);
+            if (emp == null) {
+                emp = employeeRepository.findById(member.getUserId()).orElse(null);
+            }
+            if (emp != null) {
+                res.setEmployeeId(emp.getId());
+                res.setEmployeeName(emp.getFirstName() + " " + emp.getLastName());
+                res.setEmployeeEmail(emp.getEmail());
+                res.setEmployeeCode(emp.getEmployeeCode());
+                if (emp.getDesignation() != null) {
+                    res.setDesignationName(emp.getDesignation().getDesignationName());
+                }
+                if (emp.getDepartment() != null) {
+                    res.setDepartmentName(emp.getDepartment().getDepartmentName());
+                }
+            } else {
+                userRepository.findById(member.getUserId()).ifPresent(u -> {
+                    res.setEmployeeName(u.getFirstName() + " " + u.getLastName());
+                    res.setEmployeeEmail(u.getEmail());
+                });
+            }
+        }
+        return res;
     }
 
     @Override
@@ -544,7 +605,13 @@ public class ProjectServiceImpl implements ProjectService {
         if (isEmployee) {
             String email = auth.getName().trim().toLowerCase();
             com.webliix.security.entity.User user = userRepository.findByEmail(email).orElse(null);
-            if (user != null && memberRepository.existsByProjectIdAndUserId(project.getId(), user.getId())) {
+            java.util.Set<Long> candidateIds = new java.util.HashSet<>();
+            if (user != null) {
+                candidateIds.add(user.getId());
+                employeeRepository.findByUserId(user.getId()).ifPresent(e -> candidateIds.add(e.getId()));
+            }
+            employeeRepository.findByEmail(email).ifPresent(e -> candidateIds.add(e.getId()));
+            if (!candidateIds.isEmpty() && memberRepository.existsByProjectIdAndUserIdIn(project.getId(), candidateIds)) {
                 return;
             }
         }

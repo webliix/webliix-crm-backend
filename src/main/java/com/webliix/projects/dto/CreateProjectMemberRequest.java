@@ -8,6 +8,7 @@ import java.time.LocalDate;
 public class CreateProjectMemberRequest {
 
     private Long userId;
+    private Long employeeId;
     private String roleInProject;
     private LocalDate assignedDate;
 }

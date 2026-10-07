@@ -36,6 +36,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final ProjectRepository projectRepository;
     private final com.webliix.projects.repository.ProjectMemberRepository projectMemberRepository;
     private final com.webliix.security.repository.UserRepository userRepository;
+    private final com.webliix.hr.employee.repository.EmployeeRepository employeeRepository;
     private final EmailService emailService;
 
     @Override
@@ -57,7 +58,12 @@ public class InvoiceServiceImpl implements InvoiceService {
                 String email = auth.getName().trim().toLowerCase();
                 com.webliix.security.entity.User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
-                boolean isAssigned = projectMemberRepository.existsByProjectIdAndUserId(req.getProjectId(), user.getId());
+                java.util.Set<Long> candidateIds = new java.util.HashSet<>();
+                candidateIds.add(user.getId());
+                employeeRepository.findByUserId(user.getId()).ifPresent(e -> candidateIds.add(e.getId()));
+                employeeRepository.findByEmail(email).ifPresent(e -> candidateIds.add(e.getId()));
+
+                boolean isAssigned = projectMemberRepository.existsByProjectIdAndUserIdIn(req.getProjectId(), candidateIds);
                 if (!isAssigned) {
                     throw new org.springframework.security.access.AccessDeniedException("You are not assigned to this project and cannot bill it.");
                 }
