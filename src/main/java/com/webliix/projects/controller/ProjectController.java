@@ -187,7 +187,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/tasks")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> addProjectTask(@PathVariable Long projectId,
                                                                            @RequestBody CreateProjectTaskRequest request) {
         ProjectTaskResponse response = projectService.addProjectTask(projectId, request);
@@ -211,8 +211,8 @@ public class ProjectController {
     @PutMapping("/{projectId}/tasks/{taskId}")
     @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> updateProjectTask(@PathVariable Long projectId,
-                                                                              @PathVariable Long taskId,
-                                                                              @RequestBody CreateProjectTaskRequest request) {
+                                                                               @PathVariable Long taskId,
+                                                                               @RequestBody CreateProjectTaskRequest request) {
         ProjectTaskResponse response = projectService.updateProjectTask(projectId, taskId, request);
         return ResponseEntity.ok(ApiResponse.<ProjectTaskResponse>builder()
                 .success(true)
@@ -284,7 +284,7 @@ public class ProjectController {
     }
 
     @PatchMapping("/{projectId}/progress")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProjectProgress(
             @PathVariable Long projectId,
             @RequestParam(required = false) Integer progressPercentage,
