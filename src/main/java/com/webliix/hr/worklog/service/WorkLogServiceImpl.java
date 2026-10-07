@@ -30,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -93,11 +94,16 @@ public class WorkLogServiceImpl implements WorkLogService {
                     .orElseThrow(() -> new ResourceNotFoundException("Task not found: " + request.getTaskId()));
         }
 
+        BigDecimal workUnits = request.getWorkUnits() != null ? request.getWorkUnits() : request.getHoursWorked();
+        BigDecimal workCost = request.getWorkCost() != null ? request.getWorkCost() : BigDecimal.ZERO;
+
         WorkLog workLog = WorkLog.builder()
                 .employee(employee)
                 .logDate(request.getLogDate() != null ? request.getLogDate() : LocalDate.now())
                 .workSummary(request.getWorkSummary())
                 .hoursWorked(request.getHoursWorked())
+                .workUnits(workUnits)
+                .workCost(workCost)
                 .project(project)
                 .task(task)
                 .tasksCompleted(request.getTasksCompleted())
@@ -108,6 +114,16 @@ public class WorkLogServiceImpl implements WorkLogService {
                 .build();
 
         WorkLog saved = workLogRepository.save(workLog);
+
+        // Dynamically increment project budget/total cost when day work cost is submitted
+        if (project != null && workCost.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal currentBudget = project.getBudget() != null ? project.getBudget() : BigDecimal.ZERO;
+            project.setBudget(currentBudget.add(workCost));
+            project.setUpdatedAt(LocalDateTime.now());
+            projectRepository.save(project);
+            log.info("Project '{}' (id: {}) budget updated by {} from daily work reporting. New total budget: {}",
+                    project.getProjectName(), project.getId(), workCost, project.getBudget());
+        }
 
         auditService.record(AuditAction.CREATE, AuditModule.HR, "WorkLog",
                 saved.getId().toString(), null, saved, "SUCCESS", null);
@@ -283,6 +299,8 @@ public class WorkLogServiceImpl implements WorkLogService {
         res.setLogDate(log.getLogDate());
         res.setWorkSummary(log.getWorkSummary());
         res.setHoursWorked(log.getHoursWorked());
+        res.setWorkUnits(log.getWorkUnits());
+        res.setWorkCost(log.getWorkCost());
         if (log.getProject() != null) {
             res.setProjectId(log.getProject().getId());
             res.setProjectName(log.getProject().getProjectName());

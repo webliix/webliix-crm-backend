@@ -18,7 +18,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${mail.automated.from:noreply@webliix.com}")
     private String automatedFromEmail;
 
-    @Value("${mail.automated.from-name:Webliix Automations}")
+    @Value("${mail.automated.from-name:Webliix Team}")
     private String automatedFromName;
 
     @Value("${mail.contact.from:contact@webliix.com}")

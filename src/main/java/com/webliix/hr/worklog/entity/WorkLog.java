@@ -36,6 +36,12 @@ public class WorkLog {
     @Column(name = "hours_worked")
     private BigDecimal hoursWorked;
 
+    @Column(name = "work_units")
+    private BigDecimal workUnits;
+
+    @Column(name = "work_cost")
+    private BigDecimal workCost;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
     private Project project;

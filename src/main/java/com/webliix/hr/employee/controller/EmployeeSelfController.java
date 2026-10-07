@@ -35,7 +35,6 @@ public class EmployeeSelfController {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final TicketRepository ticketRepository;
-    private final com.webliix.finance.service.InvoiceService invoiceService;
 
     private Employee resolveEmployee(Authentication auth) {
         if (auth == null || auth.getName() == null) {
@@ -119,25 +118,6 @@ public class EmployeeSelfController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
                 .success(true).message("Assigned tickets fetched").data(tickets).build());
-    }
-
-    /**
-     * POST /api/v1/employee/me/projects/{projectId}/bill
-     * Allows an assigned employee to submit a bill/invoice for their project
-     */
-    @PostMapping("/projects/{projectId}/bill")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<com.webliix.finance.dto.InvoiceResponse>> billProject(
-            @PathVariable Long projectId,
-            @RequestBody com.webliix.finance.dto.CreateInvoiceRequest request,
-            Authentication auth) {
-        request.setProjectId(projectId);
-        com.webliix.finance.dto.InvoiceResponse response = invoiceService.createInvoice(request);
-        return ResponseEntity.ok(ApiResponse.<com.webliix.finance.dto.InvoiceResponse>builder()
-                .success(true)
-                .message("Project bill / invoice generated successfully")
-                .data(response)
-                .build());
     }
 
     private EmployeeResponse toResponse(Employee employee) {
