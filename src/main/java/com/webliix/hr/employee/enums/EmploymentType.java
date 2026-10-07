@@ -5,5 +5,8 @@ public enum EmploymentType {
     PART_TIME,
     CONTRACT,
     INTERN,
-    FREELANCER
+    FREELANCER,
+    PERMANENT,
+    PROBATION,
+    TEMPORARY
 }

@@ -40,6 +40,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.webliix.notifications.service.EmailService emailService;
 
     @Override
     @Transactional
@@ -69,7 +70,12 @@ public class EmployeeServiceImpl implements EmployeeService {
             active = Boolean.TRUE;
         }
 
-        // Transactional account provisioning
+        // Automated account provisioning with password generation
+        String rawPassword = request.getPassword();
+        if (rawPassword == null || rawPassword.isBlank()) {
+            rawPassword = generateSecurePassword();
+        }
+
         User linkedUser = null;
         if (userRepository.existsByEmail(normalizedEmail)) {
             // If user already exists, link to it and ensure EMPLOYEE role is assigned
@@ -78,9 +84,12 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .orElseThrow(() -> new ResourceNotFoundException("Role EMPLOYEE not found"));
             if (linkedUser.getRoles() != null && !linkedUser.getRoles().contains(employeeRole)) {
                 linkedUser.getRoles().add(employeeRole);
-                userRepository.save(linkedUser);
             }
-        } else if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                linkedUser.setPassword(passwordEncoder.encode(request.getPassword()));
+            }
+            userRepository.save(linkedUser);
+        } else {
             Role employeeRole = roleRepository.findByName("EMPLOYEE")
                     .orElseThrow(() -> new ResourceNotFoundException("Role EMPLOYEE not found"));
 
@@ -88,7 +97,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .email(normalizedEmail)
-                    .password(passwordEncoder.encode(request.getPassword()))
+                    .password(passwordEncoder.encode(rawPassword))
                     .phone(request.getPhone())
                     .department(department.getDepartmentName())
                     .jobTitle(designation.getDesignationName())
@@ -125,6 +134,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .build();
 
         Employee saved = employeeRepository.save(employee);
+
+        // Send automated welcome email with credentials from noreply@webliix.com
+        sendEmployeeWelcomeEmail(saved, rawPassword);
+
         return toResponse(saved);
     }
 
@@ -292,5 +305,68 @@ public class EmployeeServiceImpl implements EmployeeService {
         response.setCreatedAt(employee.getCreatedAt());
         response.setUpdatedAt(employee.getUpdatedAt());
         return response;
+    }
+
+    private String generateSecurePassword() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder("Wbx@");
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        sb.append("!");
+        return sb.toString();
+    }
+
+    private void sendEmployeeWelcomeEmail(Employee employee, String rawPassword) {
+        try {
+            String subject = "Welcome to Webliix – Your Employee Account Credentials";
+            String template = loadEmailTemplate("employee-welcome");
+            String fullName = (employee.getFirstName() != null ? employee.getFirstName() : "") + " "
+                    + (employee.getLastName() != null ? employee.getLastName() : "").trim();
+            if (fullName.isBlank()) {
+                fullName = "Team Member";
+            }
+
+            String htmlBody;
+            if (template != null) {
+                htmlBody = template
+                        .replace("{{NAME}}", fullName)
+                        .replace("{{EMPLOYEE_CODE}}", employee.getEmployeeCode() != null ? employee.getEmployeeCode() : "N/A")
+                        .replace("{{EMAIL}}", employee.getEmail())
+                        .replace("{{PASSWORD}}", rawPassword);
+            } else {
+                htmlBody = "<html><body>"
+                        + "<h2>Welcome to Webliix!</h2>"
+                        + "<p>Dear " + fullName + ",</p>"
+                        + "<p>Your employee account has been created. Here are your credentials:</p>"
+                        + "<ul>"
+                        + "<li><strong>Employee Code:</strong> " + employee.getEmployeeCode() + "</li>"
+                        + "<li><strong>Portal:</strong> <a href='https://employee.webliix.com'>https://employee.webliix.com</a></li>"
+                        + "<li><strong>Email:</strong> " + employee.getEmail() + "</li>"
+                        + "<li><strong>Password:</strong> " + rawPassword + "</li>"
+                        + "</ul>"
+                        + "<p>Please log in and update your password.</p>"
+                        + "<p>Regards,<br>Webliix HR & Operations</p>"
+                        + "</body></html>";
+            }
+
+            emailService.sendAutomatedHtmlEmail(employee.getEmail(), subject, htmlBody);
+            log.info("Dispatched automated employee welcome email to {}", employee.getEmail());
+        } catch (Exception ex) {
+            log.warn("Could not dispatch automated employee welcome email to {}: {}", employee.getEmail(), ex.getMessage());
+        }
+    }
+
+    private String loadEmailTemplate(String templateName) {
+        try {
+            java.io.InputStream is = getClass().getResourceAsStream("/templates/emails/" + templateName + ".html");
+            if (is != null) {
+                return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            log.error("Failed to load email template: {}", templateName, e);
+        }
+        return null;
     }
 }
