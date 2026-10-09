@@ -20,14 +20,14 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping("/payments")
-    @PreAuthorize("hasAnyAuthority('INVOICES_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('INVOICES_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentResponse>> recordPayment(@RequestBody PaymentRequest request) {
         PaymentResponse response = paymentService.recordPayment(request.getInvoiceId(), request);
         return ResponseEntity.ok(ApiResponse.<PaymentResponse>builder().success(true).message("Payment recorded successfully").data(response).build());
     }
 
     @GetMapping("/payments")
-    @PreAuthorize("hasAnyAuthority('INVOICES_VIEW', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('INVOICES_VIEW', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentResponse>>> getPayments(@RequestParam(defaultValue = "0") int page,
                                                                           @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -36,7 +36,7 @@ public class PaymentController {
     }
 
     @GetMapping("/payments/{id}")
-    @PreAuthorize("hasAnyAuthority('INVOICES_VIEW', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('INVOICES_VIEW', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPayment(@PathVariable Long id) {
         PaymentResponse response = paymentService.getPayment(id);
         return ResponseEntity.ok(ApiResponse.<PaymentResponse>builder().success(true).message("Payment fetched").data(response).build());

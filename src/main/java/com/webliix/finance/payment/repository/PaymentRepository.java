@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Page<Payment> findByInvoiceId(Long invoiceId, Pageable pageable);
+    java.util.List<Payment> findByInvoiceId(Long invoiceId);
     Page<Payment> findByCustomerId(Long customerId, Pageable pageable);
     Page<Payment> findByPaymentNumberContainingIgnoreCase(String paymentNumber, Pageable pageable);
     Payment findTopByPaymentNumberStartingWithOrderByIdDesc(String prefix);

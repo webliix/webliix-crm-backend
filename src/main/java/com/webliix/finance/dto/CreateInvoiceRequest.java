@@ -16,4 +16,6 @@ public class CreateInvoiceRequest {
     private BigDecimal taxAmount;
     private BigDecimal discountAmount;
     private String notes;
+    private String status;
+    private BigDecimal paidAmount;
 }

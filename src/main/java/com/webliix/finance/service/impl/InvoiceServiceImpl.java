@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.util.List;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -39,6 +40,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final com.webliix.security.repository.UserRepository userRepository;
     private final com.webliix.hr.employee.repository.EmployeeRepository employeeRepository;
     private final EmailService emailService;
+    private final com.webliix.finance.payment.repository.PaymentRepository paymentRepository;
 
     @Override
     @Transactional
@@ -224,23 +226,50 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Transactional
     public InvoiceResponse updateInvoice(Long id, CreateInvoiceRequest req) {
         Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
         Invoice updated = InvoiceMapper.toEntity(req);
         updated.setId(invoice.getId());
         updated.setInvoiceNumber(invoice.getInvoiceNumber());
-        updated.setCustomer(invoice.getCustomer());
-        updated.setProject(invoice.getProject());
-        updated.setStatus(invoice.getStatus());
-        updated.setPaidAmount(invoice.getPaidAmount());
-        updated.setPendingAmount(invoice.getPendingAmount());
-        updated.setCreatedAt(invoice.getCreatedAt());
-        updated.setUpdatedAt(LocalDateTime.now());
-        if (updated.getPaidAmount() == null) {
+        if (req.getCustomerId() != null) {
+            Customer customer = customerRepository.findById(req.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + req.getCustomerId()));
+            updated.setCustomer(customer);
+        } else {
+            updated.setCustomer(invoice.getCustomer());
+        }
+        if (req.getProjectId() != null) {
+            Project project = projectRepository.findById(req.getProjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + req.getProjectId()));
+            updated.setProject(project);
+        } else {
+            updated.setProject(invoice.getProject());
+        }
+
+        if (req.getStatus() != null && !req.getStatus().isBlank()) {
+            try {
+                updated.setStatus(com.webliix.finance.enums.InvoiceStatus.valueOf(req.getStatus().toUpperCase()));
+            } catch (Exception ex) {
+                updated.setStatus(invoice.getStatus());
+            }
+        } else {
+            updated.setStatus(invoice.getStatus());
+        }
+
+        if (req.getPaidAmount() != null) {
+            updated.setPaidAmount(req.getPaidAmount());
+        } else if (invoice.getPaidAmount() != null) {
+            updated.setPaidAmount(invoice.getPaidAmount());
+        } else {
             updated.setPaidAmount(BigDecimal.ZERO);
         }
-        if (updated.getPendingAmount() == null && updated.getTotalAmount() != null) {
-            updated.setPendingAmount(updated.getTotalAmount().subtract(updated.getPaidAmount()));
+
+        if (updated.getTotalAmount() != null) {
+            BigDecimal pending = updated.getTotalAmount().subtract(updated.getPaidAmount());
+            updated.setPendingAmount(pending.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : pending);
         }
+
+        updated.setCreatedAt(invoice.getCreatedAt());
+        updated.setUpdatedAt(LocalDateTime.now());
         Invoice saved = invoiceRepository.save(updated);
         return InvoiceMapper.toResponse(saved);
     }
@@ -248,10 +277,19 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public void deleteInvoice(Long id) {
-        if (!invoiceRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Invoice not found");
+        Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
+
+        // Unlink any payments referencing this invoice before deleting to prevent foreign key errors
+        List<com.webliix.finance.payment.entity.Payment> payments = paymentRepository.findByInvoiceId(id);
+        if (payments != null && !payments.isEmpty()) {
+            for (com.webliix.finance.payment.entity.Payment payment : payments) {
+                payment.setInvoice(null);
+                paymentRepository.save(payment);
+            }
         }
-        invoiceRepository.deleteById(id);
+
+        invoiceRepository.delete(invoice);
     }
 
     @Override
