@@ -50,6 +50,8 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
     private final InvoiceRepository invoiceRepository;
     private final AuditService auditService;
     private final NotificationService notificationService;
+    private final com.webliix.notifications.service.EmailService emailService;
+    private final com.webliix.finance.payment.repository.PaymentRepository paymentRepository;
 
     private Employee resolveEmployeeFromAuth(Authentication auth) {
         if (auth == null || auth.getName() == null) {
@@ -180,14 +182,134 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
             throw new IllegalArgumentException("Status must be APPROVED or REJECTED");
         }
 
-        // IMPORTANT: Approving a payment submission only marks the submission record as approved
-        // for tracking/accounting verification. It does NOT automatically update official invoice totals
-        // or mark invoices paid without the dedicated finance admin recording it into official payments.
         submission.setStatus(request.getStatus());
         submission.setReviewedBy(auth != null ? auth.getName() : "System");
         submission.setReviewNotes(request.getReviewNotes());
         submission.setReviewedAt(LocalDateTime.now());
         submission.setUpdatedAt(LocalDateTime.now());
+
+        if ("APPROVED".equals(request.getStatus())) {
+            Customer customer = submission.getCustomer() != null ? submission.getCustomer()
+                    : (submission.getProject() != null ? submission.getProject().getCustomer() : null);
+
+            Invoice linkedInvoice = submission.getLinkedInvoice();
+            if (linkedInvoice != null) {
+                BigDecimal currentPaid = linkedInvoice.getPaidAmount() != null ? linkedInvoice.getPaidAmount() : BigDecimal.ZERO;
+                BigDecimal updatedPaid = currentPaid.add(submission.getAmount());
+                linkedInvoice.setPaidAmount(updatedPaid);
+                BigDecimal updatedPending = linkedInvoice.getTotalAmount() != null
+                        ? linkedInvoice.getTotalAmount().subtract(updatedPaid).max(BigDecimal.ZERO)
+                        : BigDecimal.ZERO;
+                linkedInvoice.setPendingAmount(updatedPending);
+                if (updatedPending.compareTo(BigDecimal.ZERO) <= 0) {
+                    linkedInvoice.setStatus(com.webliix.finance.enums.InvoiceStatus.PAID);
+                } else {
+                    linkedInvoice.setStatus(com.webliix.finance.enums.InvoiceStatus.PARTIALLY_PAID);
+                }
+                linkedInvoice.setUpdatedAt(LocalDateTime.now());
+                invoiceRepository.save(linkedInvoice);
+            } else {
+                String prefix = com.webliix.finance.util.InvoiceNumberGenerator.currentPrefix();
+                String invoiceNumber = invoiceRepository.findTopByInvoiceNumberStartingWithOrderByIdDesc(prefix)
+                        .map(i -> com.webliix.finance.util.InvoiceNumberGenerator.next(i.getInvoiceNumber()))
+                        .orElse(prefix + "000001");
+
+                Invoice newInvoice = Invoice.builder()
+                        .invoiceNumber(invoiceNumber)
+                        .customer(customer)
+                        .project(submission.getProject())
+                        .issueDate(submission.getPaymentDate() != null ? submission.getPaymentDate() : LocalDate.now())
+                        .dueDate(submission.getPaymentDate() != null ? submission.getPaymentDate() : LocalDate.now())
+                        .subtotal(submission.getAmount())
+                        .taxAmount(BigDecimal.ZERO)
+                        .discountAmount(BigDecimal.ZERO)
+                        .totalAmount(submission.getAmount())
+                        .paidAmount(submission.getAmount())
+                        .pendingAmount(BigDecimal.ZERO)
+                        .status(com.webliix.finance.enums.InvoiceStatus.PAID)
+                        .notes(submission.getNotes() != null && !submission.getNotes().isBlank()
+                                ? submission.getNotes()
+                                : "Generated automatically from approved employee billing submission.")
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                com.webliix.finance.entity.InvoiceItem item = com.webliix.finance.entity.InvoiceItem.builder()
+                        .itemName(submission.getNotes() != null && !submission.getNotes().isBlank() ? submission.getNotes() : "Project Deliverable Work Billing")
+                        .description("Payment verified and settled by finance administration. Ref: " + (submission.getReferenceNumber() != null ? submission.getReferenceNumber() : "SUB-" + submission.getId()))
+                        .quantity(1)
+                        .unitPrice(submission.getAmount())
+                        .totalPrice(submission.getAmount())
+                        .invoice(newInvoice)
+                        .build();
+
+                newInvoice.setItems(new java.util.ArrayList<>(java.util.List.of(item)));
+                Invoice savedInvoice = invoiceRepository.save(newInvoice);
+                submission.setLinkedInvoice(savedInvoice);
+
+                // Record in ledger payments table
+                try {
+                    String payPrefix = com.webliix.finance.util.PaymentNumberGenerator.currentPrefix();
+                    com.webliix.finance.payment.entity.Payment lastPayment = paymentRepository.findTopByPaymentNumberStartingWithOrderByIdDesc(payPrefix);
+                    String payNum = com.webliix.finance.util.PaymentNumberGenerator.next(lastPayment != null ? lastPayment.getPaymentNumber() : null);
+
+                    com.webliix.finance.enums.PaymentMethod pm = com.webliix.finance.enums.PaymentMethod.BANK_TRANSFER;
+                    if (submission.getPaymentMethod() != null) {
+                        try {
+                            pm = com.webliix.finance.enums.PaymentMethod.valueOf(submission.getPaymentMethod().toUpperCase());
+                        } catch (Exception ignored) {}
+                    }
+
+                    com.webliix.finance.payment.entity.Payment payRecord = com.webliix.finance.payment.entity.Payment.builder()
+                            .paymentNumber(payNum)
+                            .invoice(savedInvoice)
+                            .customer(customer)
+                            .amount(submission.getAmount())
+                            .paymentDate(submission.getPaymentDate() != null ? submission.getPaymentDate() : LocalDate.now())
+                            .paymentMethod(pm)
+                            .status(com.webliix.finance.enums.PaymentStatus.SUCCESS)
+                            .transactionReference(submission.getReferenceNumber())
+                            .remarks(submission.getNotes())
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    paymentRepository.save(payRecord);
+                } catch (Exception payEx) {
+                    log.warn("Could not record payment ledger entity: {}", payEx.getMessage());
+                }
+
+                // Email customer receipt with Webliix Team
+                if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
+                    try {
+                        String custName = customer.getContactPerson() != null && !customer.getContactPerson().isBlank()
+                                ? customer.getContactPerson()
+                                : (customer.getCompanyName() != null ? customer.getCompanyName() : "Valued Customer");
+                        String emailSubject = "Payment Receipt & Invoice Paid – " + savedInvoice.getInvoiceNumber();
+                        String htmlReceipt = null;
+                        try (java.io.InputStream is = getClass().getResourceAsStream("/templates/emails/invoice-paid.html")) {
+                            if (is != null) {
+                                htmlReceipt = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                                        .replace("[CUSTOMER_NAME]", custName)
+                                        .replace("[INVOICE_ID]", savedInvoice.getInvoiceNumber())
+                                        .replace("[AMOUNT]", submission.getCurrency() + " " + submission.getAmount());
+                            }
+                        }
+                        if (htmlReceipt != null) {
+                            emailService.sendAutomatedHtmlEmail(customer.getEmail(), emailSubject, htmlReceipt);
+                        }
+                    } catch (Exception emailEx) {
+                        log.warn("Could not dispatch customer invoice receipt email: {}", emailEx.getMessage());
+                    }
+                }
+            }
+
+            // Update project budget tracking
+            if (submission.getProject() != null) {
+                Project proj = submission.getProject();
+                BigDecimal currentBudget = proj.getBudget() != null ? proj.getBudget() : BigDecimal.ZERO;
+                proj.setBudget(currentBudget.add(submission.getAmount()));
+                projectRepository.save(proj);
+            }
+        }
 
         PaymentSubmission saved = paymentSubmissionRepository.save(submission);
 

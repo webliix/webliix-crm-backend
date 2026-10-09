@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Webliix Client Portal</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 32px 24px; text-align: center;">
+            <img src="https://res.cloudinary.com/vhth8clt/image/upload/v1788210409/logo.png" alt="Webliix" style="height: 40px; margin-bottom: 12px;" />
+            <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Welcome to Webliix</h1>
+            <p style="color: #94a3b8; font-size: 14px; margin: 6px 0 0;">Your Official Client Portal Account is Ready</p>
+        </div>
+        <div style="padding: 32px 28px;">
+            <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Dear <strong>{{NAME}}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px;">
+                Welcome to Webliix! Your client portal account has been provisioned successfully. You can now access your project deliverables, view daily work progress, track milestone timelines, and inspect real-time billing and invoices.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0 0 14px; letter-spacing: 0.05em;">Client Portal Credentials</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; width: 140px;"><strong>Customer Code:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{{CUSTOMER_CODE}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Portal URL:</strong></td>
+                        <td style="padding: 6px 0;"><a href="https://login.webliix.com" style="color: #6366f1; text-decoration: none; font-weight: 600;">https://login.webliix.com</a></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Login Email:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{{EMAIL}}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Temporary Password:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-size: 15px; font-weight: 700; background-color: #e2e8f0; padding: 4px 8px; border-radius: 4px; display: inline-block;">{{PASSWORD}}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="https://login.webliix.com" style="background-color: #6366f1; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+                    Log In to Client Portal
+                </a>
+            </div>
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0;">
+                <em>Security Notice:</em> For your account security, we recommend changing your password immediately after logging in for the first time.
+            </p>
+        </div>
+        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
+            <p style="margin: 0;">Webliix Team • noreply@webliix.com • Webliix Technologies</p>
+        </div>
+    </div>
+</body>
+</html>

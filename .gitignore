@@ -6,6 +6,7 @@ target/
 *.ear
 *.rar
 build/
+*.zip
 
 # Uploads & Local Media Storage (Excludes runtime user files)
 uploads/

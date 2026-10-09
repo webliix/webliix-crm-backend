@@ -78,17 +78,23 @@ public class InvoiceMapper {
         res.setPendingAmount(invoice.getPendingAmount());
         res.setStatus(invoice.getStatus());
         res.setNotes(invoice.getNotes());
-        if (invoice.getItems() != null) {
-            res.setItems(invoice.getItems().stream().map(item -> {
-                InvoiceItemResponse ir = new InvoiceItemResponse();
-                ir.setId(item.getId());
-                ir.setItemName(item.getItemName());
-                ir.setDescription(item.getDescription());
-                ir.setQuantity(item.getQuantity());
-                ir.setUnitPrice(item.getUnitPrice());
-                ir.setTotalPrice(item.getTotalPrice());
-                return ir;
-            }).collect(Collectors.toList()));
+        try {
+            if (invoice.getItems() != null && org.hibernate.Hibernate.isInitialized(invoice.getItems())) {
+                res.setItems(invoice.getItems().stream().map(item -> {
+                    InvoiceItemResponse ir = new InvoiceItemResponse();
+                    ir.setId(item.getId());
+                    ir.setItemName(item.getItemName());
+                    ir.setDescription(item.getDescription());
+                    ir.setQuantity(item.getQuantity());
+                    ir.setUnitPrice(item.getUnitPrice());
+                    ir.setTotalPrice(item.getTotalPrice());
+                    return ir;
+                }).collect(Collectors.toList()));
+            } else {
+                res.setItems(java.util.Collections.emptyList());
+            }
+        } catch (Exception ex) {
+            res.setItems(java.util.Collections.emptyList());
         }
         res.setCreatedAt(invoice.getCreatedAt());
         res.setUpdatedAt(invoice.getUpdatedAt());

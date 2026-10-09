@@ -19,6 +19,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final com.webliix.hr.worklog.service.WorkLogService workLogService;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
@@ -108,7 +109,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/members")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMemberResponse>> addProjectMember(@PathVariable Long projectId,
                                                                               @RequestBody CreateProjectMemberRequest request) {
         ProjectMemberResponse response = projectService.addProjectMember(projectId, request);
@@ -130,7 +131,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/members/{memberId}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<Void>> removeProjectMember(@PathVariable Long projectId,
                                                                  @PathVariable Long memberId) {
         projectService.removeProjectMember(projectId, memberId);
@@ -323,6 +324,20 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.<List<com.webliix.finance.dto.InvoiceResponse>>builder()
                 .success(true)
                 .message("Project invoices fetched")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/{projectId}/work-logs")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<com.webliix.hr.worklog.dto.WorkLogResponse>>> getProjectWorkLogs(
+            @PathVariable Long projectId,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        List<com.webliix.hr.worklog.dto.WorkLogResponse> response = workLogService.getWorkLogsByProject(projectId, authentication);
+        return ResponseEntity.ok(ApiResponse.<List<com.webliix.hr.worklog.dto.WorkLogResponse>>builder()
+                .success(true)
+                .message("Project work logs and task updates fetched")
                 .data(response)
                 .build());
     }

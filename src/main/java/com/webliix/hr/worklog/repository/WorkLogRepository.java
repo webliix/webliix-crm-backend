@@ -15,4 +15,6 @@ public interface WorkLogRepository extends JpaRepository<WorkLog, Long> {
     List<WorkLog> findByEmployeeIdAndLogDateBetweenOrderByLogDateDesc(Long employeeId, LocalDate from, LocalDate to);
     Page<WorkLog> findByStatus(String status, Pageable pageable);
     Page<WorkLog> findByProjectId(Long projectId, Pageable pageable);
+    List<WorkLog> findByProjectIdOrderByLogDateDesc(Long projectId);
+    boolean existsByProjectIdAndEmployeeId(Long projectId, Long employeeId);
 }

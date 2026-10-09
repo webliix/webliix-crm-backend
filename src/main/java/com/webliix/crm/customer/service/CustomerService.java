@@ -2,6 +2,7 @@ package com.webliix.crm.customer.service;
 
 import com.webliix.crm.customer.dto.CreateCustomerRequest;
 import com.webliix.crm.customer.dto.CustomerResponse;
+import com.webliix.crm.customer.entity.Customer;
 import com.webliix.crm.customer.entity.CustomerContact;
 import com.webliix.crm.customer.entity.CustomerNote;
 import com.webliix.finance.dto.InvoiceResponse;
@@ -36,4 +37,6 @@ public interface CustomerService {
     List<CustomerNote> getCustomerNotes(Long customerId);
 
     CustomerNote addCustomerNote(Long customerId, CustomerNote note);
+
+    void provisionClientPortalAccount(Customer customer);
 }

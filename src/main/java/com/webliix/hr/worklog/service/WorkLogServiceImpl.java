@@ -288,6 +288,55 @@ public class WorkLogServiceImpl implements WorkLogService {
         workLogRepository.deleteById(id);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkLogResponse> getWorkLogsByProject(Long projectId, Authentication auth) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + projectId));
+
+        boolean isCust = auth != null && (
+                auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("USER") || a.getAuthority().contains("CLIENT"))
+                && auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().contains("ADMIN") || a.getAuthority().contains("MANAGER") || a.getAuthority().contains("EMPLOYEE"))
+        );
+
+        if (isCust) {
+            String email = auth.getName();
+            if (project.getCustomer() == null || project.getCustomer().getEmail() == null
+                    || !project.getCustomer().getEmail().equalsIgnoreCase(email)) {
+                throw new org.springframework.security.access.AccessDeniedException("Access denied: You do not own this project.");
+            }
+            return workLogRepository.findByProjectIdOrderByLogDateDesc(projectId).stream()
+                    .map(this::toCustomerResponse)
+                    .collect(Collectors.toList());
+        }
+
+        return workLogRepository.findByProjectIdOrderByLogDateDesc(projectId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private WorkLogResponse toCustomerResponse(WorkLog log) {
+        WorkLogResponse res = new WorkLogResponse();
+        res.setId(log.getId());
+        res.setEmployeeId(null);
+        res.setEmployeeName("Webliix Engineering Team");
+        res.setEmployeeCode(null);
+        res.setLogDate(log.getLogDate());
+        res.setWorkSummary(log.getWorkSummary());
+        res.setHoursWorked(log.getHoursWorked());
+        res.setWorkUnits(log.getWorkUnits());
+        res.setWorkCost(log.getWorkCost());
+        if (log.getProject() != null) {
+            res.setProjectId(log.getProject().getId());
+            res.setProjectName(log.getProject().getProjectName());
+        }
+        res.setTasksCompleted(log.getTasksCompleted());
+        res.setStatus(log.getStatus());
+        res.setCreatedAt(log.getCreatedAt());
+        res.setUpdatedAt(log.getUpdatedAt());
+        return res;
+    }
+
     private WorkLogResponse toResponse(WorkLog log) {
         WorkLogResponse res = new WorkLogResponse();
         res.setId(log.getId());

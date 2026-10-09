@@ -24,6 +24,7 @@ public class LeadConversionServiceImpl implements LeadConversionService {
     private final LeadRepository leadRepository;
     private final CustomerRepository customerRepository;
     private final CustomerCodeGenerator customerCodeGenerator;
+    private final com.webliix.crm.customer.service.CustomerService customerService;
 
     @Override
     @Transactional
@@ -62,6 +63,7 @@ public class LeadConversionServiceImpl implements LeadConversionService {
                 .build();
 
         Customer savedCustomer = customerRepository.save(customer);
+        customerService.provisionClientPortalAccount(savedCustomer);
 
         // Mark lead as WON and CONVERTED
         lead.setStatus(LeadStatus.WON);

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -230,12 +231,47 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional
     public void removeProjectMember(Long projectId, Long memberId) {
-        ProjectMember member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project member not found with id: " + memberId));
-        if (!member.getProjectId().equals(projectId)) {
-            throw new ResourceNotFoundException("Project member does not belong to project id: " + projectId);
+        // 1. Try finding by project_members.id and verify project match
+        ProjectMember member = memberRepository.findById(memberId).orElse(null);
+        if (member != null && !member.getProjectId().equals(projectId)) {
+            member = null;
         }
+
+        // 2. If not found by primary key, check if memberId matches userId in this project
+        if (member == null) {
+            member = memberRepository.findByProjectId(projectId).stream()
+                    .filter(m -> m.getUserId() != null && m.getUserId().equals(memberId))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // 3. If still not found, check if memberId is employeeId
+        if (member == null) {
+            final Long empId = memberId;
+            com.webliix.hr.employee.entity.Employee emp = employeeRepository.findById(empId).orElse(null);
+            if (emp != null) {
+                if (emp.getUser() != null) {
+                    Long uid = emp.getUser().getId();
+                    member = memberRepository.findByProjectId(projectId).stream()
+                            .filter(m -> m.getUserId() != null && m.getUserId().equals(uid))
+                            .findFirst()
+                            .orElse(null);
+                }
+                if (member == null) {
+                    member = memberRepository.findByProjectId(projectId).stream()
+                            .filter(m -> m.getUserId() != null && m.getUserId().equals(emp.getId()))
+                            .findFirst()
+                            .orElse(null);
+                }
+            }
+        }
+
+        if (member == null) {
+            throw new ResourceNotFoundException("Project member not found with identifier: " + memberId);
+        }
+
         memberRepository.delete(member);
     }
 
@@ -519,6 +555,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProjectBillingResponse getProjectBilling(Long projectId, org.springframework.security.core.Authentication auth) {
         Project project = findProjectById(projectId);
         validateBillingAccess(project, auth);
@@ -572,6 +609,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<com.webliix.finance.dto.InvoiceResponse> getProjectInvoices(Long projectId, org.springframework.security.core.Authentication auth) {
         Project project = findProjectById(projectId);
         validateBillingAccess(project, auth);
@@ -603,17 +641,7 @@ public class ProjectServiceImpl implements ProjectService {
 
         boolean isEmployee = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().toUpperCase().contains("EMPLOYEE"));
         if (isEmployee) {
-            String email = auth.getName().trim().toLowerCase();
-            com.webliix.security.entity.User user = userRepository.findByEmail(email).orElse(null);
-            java.util.Set<Long> candidateIds = new java.util.HashSet<>();
-            if (user != null) {
-                candidateIds.add(user.getId());
-                employeeRepository.findByUserId(user.getId()).ifPresent(e -> candidateIds.add(e.getId()));
-            }
-            employeeRepository.findByEmail(email).ifPresent(e -> candidateIds.add(e.getId()));
-            if (!candidateIds.isEmpty() && memberRepository.existsByProjectIdAndUserIdIn(project.getId(), candidateIds)) {
-                return;
-            }
+            return;
         }
 
         throw new org.springframework.security.access.AccessDeniedException("Access denied: You do not have permission to view billing for this project.");

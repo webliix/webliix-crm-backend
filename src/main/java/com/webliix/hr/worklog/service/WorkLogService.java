@@ -20,4 +20,5 @@ public interface WorkLogService {
     Page<WorkLogResponse> getWorkLogsByEmployee(Long employeeId, Pageable pageable);
     WorkLogResponse reviewWorkLog(Long id, WorkLogReviewRequest request, Authentication auth);
     void deleteWorkLog(Long id, Authentication auth);
+    List<WorkLogResponse> getWorkLogsByProject(Long projectId, Authentication auth);
 }

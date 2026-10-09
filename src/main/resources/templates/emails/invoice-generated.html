@@ -1,32 +1,50 @@
+<!DOCTYPE html>
 <html>
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header { background-color: #17a2b8; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f8f9fa; padding: 20px; }
-        .footer { background-color: #e9ecef; padding: 10px; text-align: center; font-size: 12px; border-radius: 0 0 5px 5px; }
-        .button { background-color: #17a2b8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px; }
-    </style>
+    <meta charset="UTF-8">
+    <title>New Invoice Issued - Webliix</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Invoice Generated</h1>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 32px 24px; text-align: center;">
+            <img src="https://res.cloudinary.com/vhth8clt/image/upload/v1788210409/logo.png" alt="Webliix" style="height: 40px; margin-bottom: 12px;" />
+            <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Invoice Issued</h1>
+            <p style="color: #94a3b8; font-size: 14px; margin: 6px 0 0;">Webliix Project & Client Billing Statement</p>
         </div>
-        <div class="content">
-            <p>A new invoice has been generated for [CUSTOMER_NAME].</p>
-            <p><strong>Invoice Details:</strong></p>
-            <ul>
-                <li>Invoice ID: [INVOICE_ID]</li>
-                <li>Amount: [AMOUNT]</li>
-                <li>Due Date: [DUE_DATE]</li>
-                <li>Status: [STATUS]</li>
-            </ul>
-            <a href="https://webliix.com/invoices/[INVOICE_ID]" class="button">View Invoice</a>
+        <div style="padding: 32px 28px;">
+            <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Dear <strong>[CUSTOMER_NAME]</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px;">
+                A new invoice has been generated for your project. Please review the summary below.
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <p style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0 0 14px; letter-spacing: 0.05em;">Invoice Summary</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b; width: 140px;"><strong>Invoice #:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">[INVOICE_ID]</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Total Amount:</strong></td>
+                        <td style="padding: 6px 0; color: #6366f1; font-weight: 700; font-size: 16px;">[AMOUNT]</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Due Date:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">[DUE_DATE]</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0; color: #64748b;"><strong>Status:</strong></td>
+                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">[STATUS]</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="https://login.webliix.com" style="background-color: #6366f1; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+                    View in Client Portal
+                </a>
+            </div>
         </div>
-        <div class="footer">
-            <p>&copy; 2026 Webliix. All rights reserved.</p>
+        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
+            <p style="margin: 0;">Webliix Team • noreply@webliix.com • &copy; 2026 Webliix</p>
         </div>
     </div>
 </body>
