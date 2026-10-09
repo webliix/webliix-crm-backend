@@ -115,6 +115,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional
     public void deleteProject(Long id) {
         if (!projectRepository.existsById(id)) {
             throw new ResourceNotFoundException("Project not found with id: " + id);
@@ -123,6 +124,14 @@ public class ProjectServiceImpl implements ProjectService {
         deleteTasksByProject(id);
         deleteMilestonesByProject(id);
         deleteMembersByProject(id);
+
+        // Safely unlink any existing invoices before deleting project to avoid FK constraint error
+        List<com.webliix.finance.entity.Invoice> invoices = invoiceRepository.findByProjectIdOrderByCreatedAtDesc(id);
+        for (com.webliix.finance.entity.Invoice inv : invoices) {
+            inv.setProject(null);
+            invoiceRepository.save(inv);
+        }
+
         projectRepository.deleteById(id);
     }
 
@@ -582,9 +591,13 @@ public class ProjectServiceImpl implements ProjectService {
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal remainingProjectBalance = budget.compareTo(BigDecimal.ZERO) > 0
-                ? (budget.compareTo(totalPaid) > 0 ? budget.subtract(totalPaid) : BigDecimal.ZERO)
-                : pendingDueOnInvoices;
+        BigDecimal remainingProjectBalance;
+        if (budget.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal budgetRemaining = budget.compareTo(totalPaid) > 0 ? budget.subtract(totalPaid) : BigDecimal.ZERO;
+            remainingProjectBalance = budgetRemaining.max(pendingDueOnInvoices);
+        } else {
+            remainingProjectBalance = pendingDueOnInvoices;
+        }
 
         BigDecimal unbilledContractAmount = budget.compareTo(totalBilled) > 0
                 ? budget.subtract(totalBilled)

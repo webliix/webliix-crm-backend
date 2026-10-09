@@ -24,7 +24,7 @@ public class PaymentSubmissionController {
     // === EMPLOYEE SELF-SERVICE ROUTES ===
 
     @PostMapping("/employee/me/payment-submissions")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<PaymentSubmissionResponse>> submitPayment(
             @RequestBody PaymentSubmissionRequest request,
             Authentication auth) {
@@ -34,7 +34,7 @@ public class PaymentSubmissionController {
     }
 
     @GetMapping("/employee/me/payment-submissions")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<Page<PaymentSubmissionResponse>>> getMySubmissions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,

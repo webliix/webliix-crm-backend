@@ -22,7 +22,7 @@ public class ProjectController {
     private final com.webliix.hr.worklog.service.WorkLogService workLogService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_CREATE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(@RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.createProject(request);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
@@ -78,7 +78,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(@PathVariable Long id, @RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.updateProject(id, request);
         return ResponseEntity.ok(ApiResponse.<ProjectResponse>builder()
@@ -89,7 +89,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -142,7 +142,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/milestones")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMilestoneResponse>> addProjectMilestone(@PathVariable Long projectId,
                                                                                     @RequestBody CreateProjectMilestoneRequest request) {
         ProjectMilestoneResponse response = projectService.addProjectMilestone(projectId, request);
@@ -164,7 +164,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{projectId}/milestones/{milestoneId}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ProjectMilestoneResponse>> updateProjectMilestone(@PathVariable Long projectId,
                                                                                        @PathVariable Long milestoneId,
                                                                                        @RequestBody CreateProjectMilestoneRequest request) {
@@ -177,7 +177,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/milestones/{milestoneId}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deleteProjectMilestone(@PathVariable Long projectId,
                                                                     @PathVariable Long milestoneId) {
         projectService.deleteProjectMilestone(projectId, milestoneId);
@@ -188,7 +188,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/tasks")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> addProjectTask(@PathVariable Long projectId,
                                                                            @RequestBody CreateProjectTaskRequest request) {
         ProjectTaskResponse response = projectService.addProjectTask(projectId, request);
@@ -210,7 +210,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{projectId}/tasks/{taskId}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectTaskResponse>> updateProjectTask(@PathVariable Long projectId,
                                                                                @PathVariable Long taskId,
                                                                                @RequestBody CreateProjectTaskRequest request) {
@@ -223,7 +223,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}/tasks/{taskId}")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_DELETE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<Void>> deleteProjectTask(@PathVariable Long projectId,
                                                                @PathVariable Long taskId) {
         projectService.deleteProjectTask(projectId, taskId);
@@ -285,7 +285,7 @@ public class ProjectController {
     }
 
     @PatchMapping("/{projectId}/progress")
-    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @PreAuthorize("hasAnyAuthority('PROJECTS_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProjectProgress(
             @PathVariable Long projectId,
             @RequestParam(required = false) Integer progressPercentage,
