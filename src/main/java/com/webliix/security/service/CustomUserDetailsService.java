@@ -33,6 +33,12 @@ public class CustomUserDetailsService implements UserDetailsService {
                     authorities.add(new SimpleGrantedAuthority("*"));
                     authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
                     authorities.add(new SimpleGrantedAuthority("ADMIN"));
+                    authorities.add(new SimpleGrantedAuthority("ROLE_MANAGER"));
+                    authorities.add(new SimpleGrantedAuthority("MANAGER"));
+                    authorities.add(new SimpleGrantedAuthority("ROLE_HR"));
+                    authorities.add(new SimpleGrantedAuthority("HR"));
+                    authorities.add(new SimpleGrantedAuthority("ROLE_EMPLOYEE"));
+                    authorities.add(new SimpleGrantedAuthority("EMPLOYEE"));
                 }
             }
         }

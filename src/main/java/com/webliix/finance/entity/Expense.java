@@ -25,6 +25,8 @@ public class Expense {
     @Column(name = "expense_number", unique = true, nullable = false)
     private String expenseNumber;
 
+    private String title;
+
     @Enumerated(EnumType.STRING)
     private ExpenseCategory category;
 
@@ -42,9 +44,24 @@ public class Expense {
 
     private String vendor;
 
+    @Column(name = "status")
+    private String status; // APPROVED, PENDING, REJECTED, PAID
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "reference_number")
+    private String referenceNumber;
+
+    @Column(name = "receipt_url")
+    private String receiptUrl;
+
     @Column(name = "created_by")
     private String createdBy;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

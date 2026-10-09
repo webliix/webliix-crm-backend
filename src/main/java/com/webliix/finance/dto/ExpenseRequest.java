@@ -9,11 +9,16 @@ import java.time.LocalDate;
 
 @Data
 public class ExpenseRequest {
+    private String title;
     private ExpenseCategory category;
     private String description;
     private BigDecimal amount;
     private LocalDate expenseDate;
     private PaymentMethod paymentMethod;
     private String vendor;
+    private String status;
+    private String notes;
+    private String referenceNumber;
+    private String receiptUrl;
     private String createdBy;
 }

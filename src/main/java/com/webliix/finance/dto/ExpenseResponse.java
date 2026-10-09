@@ -12,12 +12,18 @@ import java.time.LocalDateTime;
 public class ExpenseResponse {
     private Long id;
     private String expenseNumber;
+    private String title;
     private ExpenseCategory category;
     private String description;
     private BigDecimal amount;
     private LocalDate expenseDate;
     private PaymentMethod paymentMethod;
     private String vendor;
+    private String status;
+    private String notes;
+    private String referenceNumber;
+    private String receiptUrl;
     private String createdBy;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
