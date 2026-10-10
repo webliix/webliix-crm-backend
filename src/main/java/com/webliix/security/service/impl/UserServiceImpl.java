@@ -51,12 +51,17 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User with email " + email + " already exists.");
         }
 
-        String roleName = request.getRole() != null && !request.getRole().isBlank()
+        String rawRole = request.getRole() != null && !request.getRole().isBlank()
                 ? request.getRole().trim().toUpperCase()
                 : "EMPLOYEE";
-
-        Role assignedRole = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new ResourceNotFoundException("Role " + roleName + " not found"));
+        if (rawRole.startsWith("ROLE_")) {
+            rawRole = rawRole.substring(5);
+        }
+        final String normalizedRoleName = rawRole;
+        Role assignedRole = roleRepository.findByName(normalizedRoleName)
+                .or(() -> roleRepository.findByName("ROLE_" + normalizedRoleName))
+                .orElseGet(() -> roleRepository.findByName("EMPLOYEE")
+                        .orElseThrow(() -> new ResourceNotFoundException("Role " + normalizedRoleName + " not found")));
 
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -74,7 +79,7 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("Super Admin created new user account: ID {}, Email {}, Role {}", saved.getId(), saved.getEmail(), roleName);
+        log.info("Super Admin created new user account: ID {}, Email {}, Role {}", saved.getId(), saved.getEmail(), assignedRole.getName());
         return mapToProfileResponse(saved);
     }
 
@@ -95,8 +100,13 @@ public class UserServiceImpl implements UserService {
 
         if (request.getRole() != null && !request.getRole().isBlank()) {
             String roleName = request.getRole().trim().toUpperCase();
-            Role assignedRole = roleRepository.findByName(roleName)
-                    .orElseThrow(() -> new ResourceNotFoundException("Role " + roleName + " not found"));
+            if (roleName.startsWith("ROLE_")) {
+                roleName = roleName.substring(5);
+            }
+            final String normalizedRole = roleName;
+            Role assignedRole = roleRepository.findByName(normalizedRole)
+                    .or(() -> roleRepository.findByName("ROLE_" + normalizedRole))
+                    .orElseThrow(() -> new ResourceNotFoundException("Role " + normalizedRole + " not found"));
             user.setRoles(Set.of(assignedRole));
         }
 
