@@ -1,12 +1,14 @@
 package com.webliix.shared.exceptions;
 
+import com.webliix.shared.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.webliix.shared.response.ApiResponse;
-
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -14,6 +16,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleNotFound(
             ResourceNotFoundException ex) {
 
+        log.warn("Resource not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.builder()
                         .success(false)
@@ -25,6 +28,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleBusiness(
             BusinessException ex) {
 
+        log.warn("Business exception: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.builder()
                         .success(false)
@@ -41,6 +45,7 @@ public class GlobalExceptionHandler {
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("Invalid request payload");
 
+        log.warn("Validation failure: {}", errorMsg);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.builder()
                         .success(false)
@@ -52,6 +57,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleNotReadable(
             org.springframework.http.converter.HttpMessageNotReadableException ex) {
 
+        log.warn("HTTP message not readable: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.builder()
                         .success(false)
@@ -74,6 +80,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleMaxUploadSize(
             org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
 
+        log.warn("Max upload size exceeded: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.builder()
                         .success(false)
@@ -85,6 +92,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleAccessDenied(
             org.springframework.security.access.AccessDeniedException ex) {
 
+        log.warn("Access denied: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.builder()
                         .success(false)
@@ -96,6 +104,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleIllegalArguments(
             RuntimeException ex) {
 
+        log.warn("Illegal argument/state exception: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.builder()
                         .success(false)
@@ -103,14 +112,37 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiResponse<?>> handleDatabaseException(
+            DataAccessException ex) {
+
+        log.error("Database error occurred: ", ex);
+        String causeMsg = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.builder()
+                        .success(false)
+                        .message("Database error: " + (causeMsg != null ? causeMsg : "Data access error"))
+                        .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGeneral(
             Exception ex) {
 
+        log.error("Unhandled server exception occurred: ", ex);
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            if (ex.getCause() != null && ex.getCause().getMessage() != null) {
+                message = ex.getCause().getMessage();
+            } else {
+                message = ex.getClass().getSimpleName();
+            }
+        }
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.builder()
                         .success(false)
-                        .message(ex.getMessage() != null ? ex.getMessage() : "An unexpected server error occurred")
+                        .message(message != null ? message : "An unexpected server error occurred")
                         .build());
     }
 }

@@ -1,5 +1,7 @@
 package com.webliix.security.service.impl;
 
+import com.webliix.hr.employee.entity.Employee;
+import com.webliix.hr.employee.repository.EmployeeRepository;
 import com.webliix.security.dto.CreateUserRequest;
 import com.webliix.security.dto.UpdateAdminUserRequest;
 import com.webliix.security.dto.UserProfileResponse;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,6 +33,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final EmployeeRepository employeeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -112,6 +117,23 @@ public class UserServiceImpl implements UserService {
 
         user.setUpdatedAt(LocalDateTime.now());
         User updated = userRepository.save(user);
+
+        // Keep linked Employee record in sync if exists
+        try {
+            Optional<Employee> empOpt = employeeRepository.findByUserId(user.getId());
+            if (empOpt.isPresent()) {
+                Employee emp = empOpt.get();
+                if (request.getFirstName() != null) emp.setFirstName(request.getFirstName().trim());
+                if (request.getLastName() != null) emp.setLastName(request.getLastName().trim());
+                if (request.getPhone() != null) emp.setPhone(request.getPhone().trim());
+                emp.setUpdatedAt(LocalDateTime.now());
+                employeeRepository.save(emp);
+                log.info("Synced updated user profile to employee record ID {}", emp.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to sync employee record for user ID {}: {}", id, e.getMessage());
+        }
+
         log.info("User ID {} updated by Super Admin", id);
         return mapToProfileResponse(updated);
     }
@@ -123,7 +145,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
 
         // Prevent deletion of bootstrap super admin
-        boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream().anyMatch(r -> "SUPER_ADMIN".equalsIgnoreCase(r.getName()));
+        boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(r -> "SUPER_ADMIN".equalsIgnoreCase(r.getName()));
         if (isSuperAdmin && userRepository.count() == 1) {
             throw new IllegalArgumentException("Cannot delete the last Super Admin account.");
         }
@@ -140,8 +164,15 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserProfileResponse mapToProfileResponse(User user) {
-        Set<String> roleNames = user.getRoles() != null
-                ? user.getRoles().stream().map(Role::getName).collect(Collectors.toSet())
+        Set<String> roleNames = (user.getRoles() != null && !user.getRoles().isEmpty())
+                ? user.getRoles().stream()
+                    .filter(Objects::nonNull)
+                    .map(r -> {
+                        String name = r.getName();
+                        if (name == null) return "USER";
+                        return name.startsWith("ROLE_") ? name.substring(5).toUpperCase() : name.toUpperCase();
+                    })
+                    .collect(Collectors.toSet())
                 : Set.of("USER");
 
         Set<String> permissions = new HashSet<>();
