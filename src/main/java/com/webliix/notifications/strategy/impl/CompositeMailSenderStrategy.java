@@ -45,6 +45,14 @@ public class CompositeMailSenderStrategy implements MailSenderStrategy {
     }
 
     @Override
+    public boolean unblockRecipient(String email) {
+        if (brevoApiStrategy.isAvailable()) {
+            return brevoApiStrategy.unblockRecipient(email);
+        }
+        return false;
+    }
+
+    @Override
     public String getProviderName() {
         return "Composite Mail Sender (Brevo API -> SMTP Fallback)";
     }

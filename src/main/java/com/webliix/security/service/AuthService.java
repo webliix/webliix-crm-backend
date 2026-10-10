@@ -22,6 +22,10 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import com.webliix.crm.customer.repository.CustomerRepository;
+import com.webliix.hr.employee.repository.EmployeeRepository;
+import com.webliix.shared.exceptions.BusinessException;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +34,8 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
+    private final EmployeeRepository employeeRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -157,19 +163,78 @@ public class AuthService {
 
     public String forgotPassword(ForgotPasswordRequest request) {
         String email = request.getEmail().trim().toLowerCase();
-        rateLimiterService.checkRateLimit("forgot-password:" + email, 3, 3600, "forgot password");
+        rateLimiterService.checkRateLimit("forgot-password:" + email, 5, 3600, "forgot password");
 
-        userRepository.findByEmail(email).ifPresent(user -> {
-            try {
-                String otp = otpService.generateAndStoreOtp(OtpService.PREFIX_PASSWORD_RESET, email);
-                emailService.sendForgotPasswordOtpEmail(user.getEmail(), user.getFirstName(), otp, 5);
-            } catch (Exception e) {
-                log.error("Failed to process forgot password request: {}", e.getMessage());
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        // If not directly in users table, check if registered as customer in Webliix DB
+        if (user == null) {
+            var customerOpt = customerRepository.findByEmail(email);
+            if (customerOpt.isPresent()) {
+                var customer = customerOpt.get();
+                Role clientRole = roleRepository.findByName("USER")
+                        .or(() -> roleRepository.findByName("CLIENT"))
+                        .or(() -> roleRepository.findByName("EMPLOYEE"))
+                        .orElseThrow(() -> new ResourceNotFoundException("Client role not configured"));
+                user = User.builder()
+                        .firstName(customer.getContactPerson() != null && !customer.getContactPerson().isBlank() ? customer.getContactPerson() : customer.getCompanyName())
+                        .lastName("")
+                        .email(email)
+                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                        .phone(customer.getPhone())
+                        .enabled(true)
+                        .emailVerified(true)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .roles(Set.of(clientRole))
+                        .build();
+                user = userRepository.save(user);
+                log.info("Auto-provisioned User account for existing Webliix customer: {}", email);
             }
-        });
+        }
 
-        // Always return generic response to prevent user enumeration
-        return "If an account with that email exists, a 6-digit verification code has been sent.";
+        // If not in customers, check if registered as employee in Webliix DB
+        if (user == null) {
+            var employeeOpt = employeeRepository.findByEmail(email);
+            if (employeeOpt.isPresent()) {
+                var emp = employeeOpt.get();
+                Role employeeRole = roleRepository.findByName("EMPLOYEE")
+                        .orElseThrow(() -> new ResourceNotFoundException("Role EMPLOYEE not found"));
+                user = User.builder()
+                        .firstName(emp.getFirstName())
+                        .lastName(emp.getLastName())
+                        .email(email)
+                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                        .phone(emp.getPhone())
+                        .enabled(true)
+                        .emailVerified(true)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .roles(Set.of(employeeRole))
+                        .build();
+                user = userRepository.save(user);
+                emp.setUser(user);
+                employeeRepository.save(emp);
+                log.info("Auto-provisioned User account for existing Webliix employee: {}", email);
+            }
+        }
+
+        // If not found in any Webliix DB entity, reject with User not found
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found with this email address");
+        }
+
+        try {
+            String otp = otpService.generateAndStoreOtp(OtpService.PREFIX_PASSWORD_RESET, email);
+            emailService.sendForgotPasswordOtpEmail(user.getEmail(), user.getFirstName(), otp, 5);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception e) {
+            log.error("Failed to process forgot password request for {}: {}", email, e.getMessage());
+            throw new BusinessException("Failed to dispatch verification code: " + e.getMessage());
+        }
+
+        return "A 6-digit verification code has been sent to " + email;
     }
 
     public VerifyResetOtpResponse verifyResetOtp(VerifyResetOtpRequest request) {

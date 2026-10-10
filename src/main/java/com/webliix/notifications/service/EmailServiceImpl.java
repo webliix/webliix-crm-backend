@@ -15,7 +15,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final MailSenderStrategy mailSenderStrategy;
 
-    @Value("${mail.automated.from:noreply@webliix.com}")
+    @Value("${mail.automated.from:${mail.contact.from:contact@webliix.com}}")
     private String automatedFromEmail;
 
     @Value("${mail.automated.from-name:Webliix Team}")
@@ -136,6 +136,11 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendVerificationOtpEmail(String to, String name, String otp, int expirationMinutes) {
+        try {
+            mailSenderStrategy.unblockRecipient(to);
+        } catch (Exception ex) {
+            log.warn("Notice: unblockRecipient for {} had issue: {}", to, ex.getMessage());
+        }
         String template = loadTemplate("email-verification-otp");
         if (template != null) {
             String html = template
@@ -152,6 +157,11 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendForgotPasswordOtpEmail(String to, String name, String otp, int expirationMinutes) {
+        try {
+            mailSenderStrategy.unblockRecipient(to);
+        } catch (Exception ex) {
+            log.warn("Notice: unblockRecipient for {} had issue: {}", to, ex.getMessage());
+        }
         String template = loadTemplate("forgot-password-otp");
         if (template != null) {
             String html = template

@@ -24,6 +24,13 @@ public interface MailSenderStrategy {
     boolean isAvailable();
 
     /**
+     * Unblock recipient if supported by provider
+     */
+    default boolean unblockRecipient(String email) {
+        return false;
+    }
+
+    /**
      * Strategy provider name for logging
      */
     String getProviderName();
