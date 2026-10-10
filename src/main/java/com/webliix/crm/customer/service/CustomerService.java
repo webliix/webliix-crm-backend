@@ -38,5 +38,9 @@ public interface CustomerService {
 
     CustomerNote addCustomerNote(Long customerId, CustomerNote note);
 
-    void provisionClientPortalAccount(Customer customer);
+    void provisionClientPortalAccount(Customer customer, String customPassword);
+
+    default void provisionClientPortalAccount(Customer customer) {
+        provisionClientPortalAccount(customer, null);
+    }
 }

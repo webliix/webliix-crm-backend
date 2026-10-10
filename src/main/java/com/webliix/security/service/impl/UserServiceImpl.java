@@ -34,6 +34,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final EmployeeRepository employeeRepository;
+    private final com.webliix.crm.customer.repository.CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -62,6 +63,9 @@ public class UserServiceImpl implements UserService {
         if (rawRole.startsWith("ROLE_")) {
             rawRole = rawRole.substring(5);
         }
+        if ("CUSTOMER".equals(rawRole) || "CLIENT".equals(rawRole)) {
+            rawRole = "USER";
+        }
         final String normalizedRoleName = rawRole;
         Role assignedRole = roleRepository.findByName(normalizedRoleName)
                 .or(() -> roleRepository.findByName("ROLE_" + normalizedRoleName))
@@ -80,7 +84,7 @@ public class UserServiceImpl implements UserService {
                 .emailVerified(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .roles(Set.of(assignedRole))
+                .roles(new HashSet<>(Set.of(assignedRole)))
                 .build();
 
         User saved = userRepository.save(user);
@@ -108,11 +112,17 @@ public class UserServiceImpl implements UserService {
             if (roleName.startsWith("ROLE_")) {
                 roleName = roleName.substring(5);
             }
+            if ("CUSTOMER".equals(roleName) || "CLIENT".equals(roleName)) {
+                roleName = "USER";
+            }
             final String normalizedRole = roleName;
             Role assignedRole = roleRepository.findByName(normalizedRole)
                     .or(() -> roleRepository.findByName("ROLE_" + normalizedRole))
                     .orElseThrow(() -> new ResourceNotFoundException("Role " + normalizedRole + " not found"));
-            user.setRoles(Set.of(assignedRole));
+            user.setRoles(new HashSet<>(Set.of(assignedRole)));
+        } else if (user.getRoles() != null) {
+            // Ensure roles collection is a mutable set to avoid Hibernate UnsupportedOperationException
+            user.setRoles(new HashSet<>(user.getRoles()));
         }
 
         user.setUpdatedAt(LocalDateTime.now());
@@ -132,6 +142,27 @@ public class UserServiceImpl implements UserService {
             }
         } catch (Exception e) {
             log.warn("Failed to sync employee record for user ID {}: {}", id, e.getMessage());
+        }
+
+        // Keep linked Customer record in sync if exists
+        try {
+            Optional<com.webliix.crm.customer.entity.Customer> custOpt = customerRepository.findByEmail(user.getEmail());
+            if (custOpt.isPresent()) {
+                com.webliix.crm.customer.entity.Customer cust = custOpt.get();
+                String fullName = ((request.getFirstName() != null ? request.getFirstName() : "") + " " +
+                                   (request.getLastName() != null ? request.getLastName() : "")).trim();
+                if (!fullName.isEmpty()) {
+                    cust.setContactPerson(fullName);
+                }
+                if (request.getPhone() != null) {
+                    cust.setPhone(request.getPhone().trim());
+                }
+                cust.setUpdatedAt(LocalDateTime.now());
+                customerRepository.save(cust);
+                log.info("Synced updated user profile to customer record ID {}", cust.getId());
+            }
+        } catch (Exception e) {
+            log.warn("Failed to sync customer record for user email {}: {}", user.getEmail(), e.getMessage());
         }
 
         log.info("User ID {} updated by Super Admin", id);

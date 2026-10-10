@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final com.webliix.finance.payment.repository.PaymentRepository paymentRepository;
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('INVOICES_CREATE', 'ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
@@ -75,5 +76,29 @@ public class InvoiceController {
     public ResponseEntity<ApiResponse<InvoiceDashboardResponse>> dashboard() {
         InvoiceDashboardResponse response = invoiceService.getDashboard();
         return ResponseEntity.ok(ApiResponse.<InvoiceDashboardResponse>builder().success(true).message("Invoice dashboard").data(response).build());
+    }
+
+    @PostMapping("/{id}/payments")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'INVOICES_EDIT', 'INVOICES_CREATE')")
+    public ResponseEntity<ApiResponse<InvoiceResponse>> recordPayment(
+            @PathVariable Long id,
+            @RequestBody com.webliix.finance.dto.RecordPaymentRequest req) {
+        InvoiceResponse response = invoiceService.recordPayment(id, req);
+        return ResponseEntity.ok(ApiResponse.<InvoiceResponse>builder()
+                .success(true)
+                .message("Payment recorded and applied to invoice successfully")
+                .data(response)
+                .build());
+    }
+
+    @GetMapping("/{id}/payments")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<java.util.List<com.webliix.finance.payment.entity.Payment>>> getPayments(@PathVariable Long id) {
+        java.util.List<com.webliix.finance.payment.entity.Payment> payments = paymentRepository.findByInvoiceId(id);
+        return ResponseEntity.ok(ApiResponse.<java.util.List<com.webliix.finance.payment.entity.Payment>>builder()
+                .success(true)
+                .message("Payments fetched")
+                .data(payments)
+                .build());
     }
 }

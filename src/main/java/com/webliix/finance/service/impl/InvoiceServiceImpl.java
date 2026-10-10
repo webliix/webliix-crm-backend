@@ -331,4 +331,75 @@ public class InvoiceServiceImpl implements InvoiceService {
         response.setTotalRevenue(revenue);
         return response;
     }
+
+    @Override
+    @Transactional
+    public InvoiceResponse recordPayment(Long invoiceId, com.webliix.finance.dto.RecordPaymentRequest req) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + invoiceId));
+
+        if (req.getAmount() == null || req.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero.");
+        }
+
+        BigDecimal currentPaid = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal newPaid = currentPaid.add(req.getAmount());
+        invoice.setPaidAmount(newPaid);
+
+        BigDecimal total = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal pending = total.subtract(newPaid);
+        if (pending.compareTo(BigDecimal.ZERO) <= 0) {
+            invoice.setPendingAmount(BigDecimal.ZERO);
+            invoice.setStatus(com.webliix.finance.enums.InvoiceStatus.PAID);
+        } else {
+            invoice.setPendingAmount(pending);
+            invoice.setStatus(com.webliix.finance.enums.InvoiceStatus.PARTIALLY_PAID);
+        }
+        invoice.setUpdatedAt(LocalDateTime.now());
+        Invoice updatedInvoice = invoiceRepository.save(invoice);
+
+        com.webliix.finance.enums.PaymentMethod pm = com.webliix.finance.enums.PaymentMethod.BANK_TRANSFER;
+        if (req.getPaymentMethod() != null && !req.getPaymentMethod().isBlank()) {
+            try {
+                pm = com.webliix.finance.enums.PaymentMethod.valueOf(req.getPaymentMethod().trim().toUpperCase().replace(" ", "_"));
+            } catch (Exception ignored) {
+                pm = com.webliix.finance.enums.PaymentMethod.OTHER;
+            }
+        }
+
+        String payNum = "PAY-" + System.currentTimeMillis();
+        com.webliix.finance.payment.entity.Payment payment = com.webliix.finance.payment.entity.Payment.builder()
+                .paymentNumber(payNum)
+                .invoice(updatedInvoice)
+                .customer(updatedInvoice.getCustomer())
+                .amount(req.getAmount())
+                .paymentDate(req.getPaymentDate() != null ? req.getPaymentDate() : java.time.LocalDate.now())
+                .paymentMethod(pm)
+                .status(com.webliix.finance.enums.PaymentStatus.SUCCESS)
+                .transactionReference(req.getReferenceNumber())
+                .remarks(req.getNotes())
+                .createdAt(LocalDateTime.now())
+                .build();
+        paymentRepository.save(payment);
+
+        // Send payment confirmation email notice to customer if email is configured
+        Customer customer = updatedInvoice.getCustomer();
+        if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
+            try {
+                String customerName = customer.getContactPerson() != null && !customer.getContactPerson().isBlank()
+                        ? customer.getContactPerson()
+                        : (customer.getCompanyName() != null ? customer.getCompanyName() : "Valued Client");
+                String subject = "Payment Receipt for Invoice #" + updatedInvoice.getInvoiceNumber() + " – Webliix";
+                String body = "<p>Dear " + customerName + ",</p>"
+                        + "<p>A payment of <strong>₹" + req.getAmount() + "</strong> has been successfully recorded for invoice <strong>#" + updatedInvoice.getInvoiceNumber() + "</strong>.</p>"
+                        + "<p>Remaining Balance: <strong>₹" + updatedInvoice.getPendingAmount() + "</strong></p>"
+                        + "<p>Thank you for your business!<br/>Webliix Finance Team</p>";
+                emailService.sendAutomatedHtmlEmail(customer.getEmail(), subject, body);
+            } catch (Exception ex) {
+                log.warn("Failed to dispatch payment receipt email to {}: {}", customer.getEmail(), ex.getMessage());
+            }
+        }
+
+        return InvoiceMapper.toResponse(updatedInvoice);
+    }
 }

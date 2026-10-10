@@ -29,6 +29,12 @@ public class LeadConversionServiceImpl implements LeadConversionService {
     @Override
     @Transactional
     public Customer convertLead(Long leadId) {
+        return convertLead(leadId, null);
+    }
+
+    @Override
+    @Transactional
+    public Customer convertLead(Long leadId, String customPassword) {
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + leadId));
 
@@ -63,7 +69,7 @@ public class LeadConversionServiceImpl implements LeadConversionService {
                 .build();
 
         Customer savedCustomer = customerRepository.save(customer);
-        customerService.provisionClientPortalAccount(savedCustomer);
+        customerService.provisionClientPortalAccount(savedCustomer, customPassword);
 
         // Mark lead as WON and CONVERTED
         lead.setStatus(LeadStatus.WON);

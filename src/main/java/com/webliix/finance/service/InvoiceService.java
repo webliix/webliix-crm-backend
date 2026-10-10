@@ -23,4 +23,6 @@ public interface InvoiceService {
     Page<InvoiceResponse> searchInvoices(String keyword, Pageable pageable);
 
     InvoiceDashboardResponse getDashboard();
+
+    InvoiceResponse recordPayment(Long invoiceId, com.webliix.finance.dto.RecordPaymentRequest req);
 }

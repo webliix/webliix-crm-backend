@@ -33,4 +33,5 @@ public class CreateCustomerRequest {
     private LocalDate customerSince;
 
     private Boolean active;
+    private String password;
 }

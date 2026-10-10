@@ -89,8 +89,12 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/convert")
-    public ResponseEntity<ApiResponse<Void>> convertLead(@PathVariable Long id) {
-        leadConversionService.convertLead(id);
+    public ResponseEntity<ApiResponse<Void>> convertLead(
+            @PathVariable Long id,
+            @RequestBody(required = false) com.webliix.crm.lead.dto.ConvertLeadRequest request
+    ) {
+        String password = request != null ? request.getPassword() : null;
+        leadConversionService.convertLead(id, password);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Lead converted successfully")

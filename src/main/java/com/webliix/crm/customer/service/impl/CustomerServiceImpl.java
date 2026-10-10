@@ -59,21 +59,24 @@ public class CustomerServiceImpl implements CustomerService {
         Customer saved = customerRepository.save(customer);
 
         // Automated Client Portal Credential Generation & Welcome Email
-        provisionClientPortalAccount(saved);
+        provisionClientPortalAccount(saved, request.getPassword());
 
         return CustomerMapper.toResponse(saved);
     }
 
     @Override
     @Transactional
-    public void provisionClientPortalAccount(Customer saved) {
+    public void provisionClientPortalAccount(Customer saved, String customPassword) {
         if (saved == null || saved.getEmail() == null || saved.getEmail().isBlank()) {
             return;
         }
 
         try {
             String rawEmail = saved.getEmail().trim().toLowerCase();
-            String defaultPassword = "Webliix#" + ((int)(Math.random() * 899999) + 100000);
+            final String chosenPassword = (customPassword != null && !customPassword.isBlank())
+                    ? customPassword.trim()
+                    : ("Webliix#" + ((int)(Math.random() * 899999) + 100000));
+            String passwordForEmail = chosenPassword;
 
             if (!userRepository.existsByEmail(rawEmail)) {
                 com.webliix.security.entity.Role clientRole = roleRepository.findByName("USER")
@@ -89,18 +92,27 @@ public class CustomerServiceImpl implements CustomerService {
                         .firstName(name)
                         .lastName("Client")
                         .email(rawEmail)
-                        .password(passwordEncoder.encode(defaultPassword))
+                        .password(passwordEncoder.encode(chosenPassword))
                         .phone(saved.getPhone())
                         .enabled(true)
                         .emailVerified(true)
-                        .roles(java.util.Set.of(clientRole))
+                        .roles(new java.util.HashSet<>(java.util.Set.of(clientRole)))
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
                         .build();
                 userRepository.save(user);
                 log.info("Provisioned new client portal User account for {}", rawEmail);
             } else {
-                defaultPassword = "[Existing Account Password / Use Reset Link]";
+                if (customPassword != null && !customPassword.isBlank()) {
+                    userRepository.findByEmail(rawEmail).ifPresent(existingUser -> {
+                        existingUser.setPassword(passwordEncoder.encode(chosenPassword));
+                        existingUser.setUpdatedAt(LocalDateTime.now());
+                        userRepository.save(existingUser);
+                        log.info("Updated existing client password during onboarding for {}", rawEmail);
+                    });
+                } else {
+                    passwordForEmail = "[Existing Account Password / Use Reset Link]";
+                }
             }
 
             String subject = "Welcome to Webliix Client Portal – Account Credentials (" + (saved.getCustomerCode() != null ? saved.getCustomerCode() : "ACC") + ")";
@@ -116,7 +128,7 @@ public class CustomerServiceImpl implements CustomerService {
                             .replace("{{NAME}}", customerName)
                             .replace("{{CUSTOMER_CODE}}", saved.getCustomerCode() != null ? saved.getCustomerCode() : "N/A")
                             .replace("{{EMAIL}}", rawEmail)
-                            .replace("{{PASSWORD}}", defaultPassword);
+                            .replace("{{PASSWORD}}", passwordForEmail);
                 }
             } catch (Exception ex) {
                 log.warn("Could not load customer-welcome.html template: {}", ex.getMessage());
@@ -130,9 +142,9 @@ public class CustomerServiceImpl implements CustomerService {
                         + "Client Portal Login Credentials:\n"
                         + "• Portal URL: https://login.webliix.com\n"
                         + "• Email: " + rawEmail + "\n"
-                        + "• Default Password: " + defaultPassword + "\n\n"
+                        + "• Password: " + passwordForEmail + "\n\n"
                         + "Log in at https://login.webliix.com to view project progress, milestone timelines, billing & invoices, and submit project updates or instructions.\n\n"
-                        + "Best regards,\nWebliix Team\nnoreply@webliix.com";
+                        + "Best regards,\nWebliix Team\ncontact@webliix.com";
                 emailService.sendEmail(rawEmail, subject, body);
             }
         } catch (Exception ex) {
