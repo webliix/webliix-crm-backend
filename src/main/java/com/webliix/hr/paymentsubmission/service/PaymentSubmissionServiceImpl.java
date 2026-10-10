@@ -182,6 +182,10 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
             throw new IllegalArgumentException("Status must be APPROVED or REJECTED");
         }
 
+        if ("APPROVED".equals(submission.getStatus())) {
+            throw new IllegalStateException("Payment submission has already been approved.");
+        }
+
         submission.setStatus(request.getStatus());
         submission.setReviewedBy(auth != null ? auth.getName() : "System");
         submission.setReviewNotes(request.getReviewNotes());
@@ -189,10 +193,6 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
         submission.setUpdatedAt(LocalDateTime.now());
 
         if ("APPROVED".equals(request.getStatus())) {
-            if ("APPROVED".equals(submission.getStatus())) {
-                throw new IllegalStateException("Payment submission has already been approved.");
-            }
-
             Customer customer = submission.getCustomer() != null ? submission.getCustomer()
                     : (submission.getProject() != null ? submission.getProject().getCustomer() : null);
 
