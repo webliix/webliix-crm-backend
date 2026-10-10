@@ -13,12 +13,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,7 +82,43 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     public Page<ExpenseResponse> getExpenses(ExpenseCategory category, String status, String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        return expenseRepository.findWithFilters(category, status, keyword, startDate, endDate, pageable).map(this::toResponse);
+        Specification<Expense> spec = buildExpenseSpecification(category, status, keyword, startDate, endDate);
+        return expenseRepository.findAll(spec, pageable).map(this::toResponse);
+    }
+
+    private Specification<Expense> buildExpenseSpecification(ExpenseCategory category, String status, String keyword, LocalDate startDate, LocalDate endDate) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (category != null) {
+                predicates.add(cb.equal(root.get("category"), category));
+            }
+
+            if (StringUtils.hasText(status) && !"ALL".equalsIgnoreCase(status.trim())) {
+                predicates.add(cb.equal(cb.upper(root.get("status")), status.trim().toUpperCase()));
+            }
+
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("expenseDate"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("expenseDate"), endDate));
+            }
+
+            if (StringUtils.hasText(keyword)) {
+                String likePattern = "%" + keyword.trim().toLowerCase() + "%";
+                Predicate expNumLike = cb.like(cb.lower(root.get("expenseNumber")), likePattern);
+                Predicate titleLike = cb.like(cb.lower(cb.coalesce(root.get("title"), "")), likePattern);
+                Predicate descLike = cb.like(cb.lower(cb.coalesce(root.get("description"), "")), likePattern);
+                Predicate vendorLike = cb.like(cb.lower(cb.coalesce(root.get("vendor"), "")), likePattern);
+                Predicate refLike = cb.like(cb.lower(cb.coalesce(root.get("referenceNumber"), "")), likePattern);
+
+                predicates.add(cb.or(expNumLike, titleLike, descLike, vendorLike, refLike));
+            }
+
+            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     @Override
