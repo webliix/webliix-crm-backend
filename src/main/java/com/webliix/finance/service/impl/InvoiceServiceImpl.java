@@ -214,12 +214,34 @@ public class InvoiceServiceImpl implements InvoiceService {
         return InvoiceMapper.toResponse(invoice);
     }
 
-    private boolean isCustomer(Authentication auth) {
+    private boolean isStaff(Authentication auth) {
         if (auth == null) return false;
         return auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority().toUpperCase();
+            return "ROLE_ADMIN".equals(authName) || "ADMIN".equals(authName)
+                    || "ROLE_SUPER_ADMIN".equals(authName) || "SUPER_ADMIN".equals(authName)
+                    || "ROLE_MANAGER".equals(authName) || "MANAGER".equals(authName)
+                    || "ROLE_HR".equals(authName) || "HR".equals(authName)
+                    || "ROLE_EMPLOYEE".equals(authName) || "EMPLOYEE".equals(authName)
+                    || "*".equals(authName) || "ALL".equals(authName);
+        });
+    }
+
+    private boolean isCustomer(Authentication auth) {
+        if (auth == null) return false;
+        if (isStaff(auth)) return false;
+        boolean hasCustomerAuthority = auth.getAuthorities().stream().anyMatch(a -> {
             String role = a.getAuthority().toUpperCase();
             return role.equals("ROLE_USER") || role.equals("USER") || role.equals("ROLE_CLIENT") || role.equals("CLIENT");
         });
+        if (hasCustomerAuthority) return true;
+
+        String email = auth.getName();
+        if (email != null && !email.isBlank()) {
+            return customerRepository.findByEmail(email.trim().toLowerCase()).isPresent()
+                    || customerRepository.findByEmail(email.trim()).isPresent();
+        }
+        return false;
     }
 
     @Override
