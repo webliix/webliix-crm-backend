@@ -20,8 +20,13 @@ public class TicketController {
     private final com.webliix.crm.customer.repository.CustomerRepository customerRepository;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('TICKETS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER', 'ROLE_USER', 'CUSTOMER', 'CLIENT', 'ROLE_CLIENT')")
-    public ResponseEntity<ApiResponse<TicketResponse>> createTicket(@Valid @RequestBody CreateTicketRequest request) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<TicketResponse>> createTicket(
+            @Valid @RequestBody CreateTicketRequest request,
+            org.springframework.security.core.Authentication auth) {
+        if ((request.getCreatedBy() == null || request.getCreatedBy().isBlank()) && auth != null) {
+            request.setCreatedBy(auth.getName());
+        }
         TicketResponse response = ticketService.createTicket(request);
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
                 .success(true)

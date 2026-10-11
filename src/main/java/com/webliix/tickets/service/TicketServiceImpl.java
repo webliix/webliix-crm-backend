@@ -83,6 +83,17 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Ticket saved = ticketRepository.save(ticket);
+
+        if (request.getDescription() != null && !request.getDescription().isBlank()) {
+            com.webliix.tickets.entity.TicketComment initialComment = com.webliix.tickets.entity.TicketComment.builder()
+                    .ticket(saved)
+                    .comment(request.getDescription())
+                    .commentedBy(ticket.getCreatedBy() != null ? ticket.getCreatedBy() : "Client")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            commentRepository.save(initialComment);
+        }
+
         TicketResponse response = TicketMapper.toResponse(saved);
         notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "New Support Ticket " + saved.getTicketNumber(), saved.getTitle(), response);
         return response;
