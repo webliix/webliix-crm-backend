@@ -24,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final com.webliix.audit.filter.AuditHttpFilter auditHttpFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
 
@@ -60,6 +61,10 @@ public class SecurityConfig {
             .addFilterBefore(
                 jwtAuthenticationFilter,
                 UsernamePasswordAuthenticationFilter.class
+            )
+            .addFilterAfter(
+                auditHttpFilter,
+                JwtAuthenticationFilter.class
             );
 
         return http.build();

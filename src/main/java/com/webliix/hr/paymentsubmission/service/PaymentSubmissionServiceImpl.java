@@ -182,17 +182,27 @@ public class PaymentSubmissionServiceImpl implements PaymentSubmissionService {
             throw new IllegalArgumentException("Status must be APPROVED or REJECTED");
         }
 
-        if ("APPROVED".equals(submission.getStatus())) {
-            throw new IllegalStateException("Payment submission has already been approved.");
+        boolean wasApproved = "APPROVED".equals(submission.getStatus());
+
+        if (wasApproved && "APPROVED".equals(request.getStatus())) {
+            // Already approved, update notes if provided and return
+            if (request.getReviewNotes() != null && !request.getReviewNotes().isBlank()) {
+                submission.setReviewNotes(request.getReviewNotes());
+                submission.setUpdatedAt(LocalDateTime.now());
+                paymentSubmissionRepository.save(submission);
+            }
+            return toResponse(submission);
         }
 
         submission.setStatus(request.getStatus());
         submission.setReviewedBy(auth != null ? auth.getName() : "System");
-        submission.setReviewNotes(request.getReviewNotes());
+        if (request.getReviewNotes() != null) {
+            submission.setReviewNotes(request.getReviewNotes());
+        }
         submission.setReviewedAt(LocalDateTime.now());
         submission.setUpdatedAt(LocalDateTime.now());
 
-        if ("APPROVED".equals(request.getStatus())) {
+        if ("APPROVED".equals(request.getStatus()) && !wasApproved) {
             Customer customer = submission.getCustomer() != null ? submission.getCustomer()
                     : (submission.getProject() != null ? submission.getProject().getCustomer() : null);
 

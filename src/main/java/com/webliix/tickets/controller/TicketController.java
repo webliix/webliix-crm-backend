@@ -17,9 +17,10 @@ import java.util.List;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final com.webliix.crm.customer.repository.CustomerRepository customerRepository;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('TICKETS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER', 'ROLE_USER', 'CUSTOMER')")
+    @PreAuthorize("hasAnyAuthority('TICKETS_CREATE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER', 'ROLE_USER', 'CUSTOMER', 'CLIENT', 'ROLE_CLIENT')")
     public ResponseEntity<ApiResponse<TicketResponse>> createTicket(@Valid @RequestBody CreateTicketRequest request) {
         TicketResponse response = ticketService.createTicket(request);
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
@@ -30,17 +31,36 @@ public class TicketController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('TICKETS_VIEW', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
-    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets(@RequestParam(required = false) Long projectId,
-                                                                        @RequestParam(required = false) Long customerId) {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets(
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Long customerId,
+            org.springframework.security.core.Authentication auth) {
+        
+        boolean isStaff = auth != null && auth.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority().toUpperCase();
+            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("EMPLOYEE") || role.contains("HR") || role.equals("*");
+        });
+
         List<TicketResponse> response;
-        if (projectId != null) {
+        if (!isStaff) {
+            String email = auth != null ? auth.getName() : "";
+            var customer = customerRepository.findByEmail(email.trim().toLowerCase())
+                    .or(() -> customerRepository.findByEmail(email.trim()))
+                    .orElse(null);
+            if (customer != null) {
+                response = ticketService.getTicketsByCustomer(customer.getId());
+            } else {
+                response = List.of();
+            }
+        } else if (projectId != null) {
             response = ticketService.getTicketsByProject(projectId);
         } else if (customerId != null) {
             response = ticketService.getTicketsByCustomer(customerId);
         } else {
             response = ticketService.getAllTickets();
         }
+
         return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
                 .success(true)
                 .message("Tickets fetched")
@@ -61,8 +81,26 @@ public class TicketController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<TicketResponse>> getTicket(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TicketResponse>> getTicket(
+            @PathVariable Long id,
+            org.springframework.security.core.Authentication auth) {
         TicketResponse response = ticketService.getTicket(id);
+
+        boolean isStaff = auth != null && auth.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority().toUpperCase();
+            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("EMPLOYEE") || role.contains("HR") || role.equals("*");
+        });
+
+        if (!isStaff) {
+            String email = auth != null ? auth.getName() : "";
+            var customer = customerRepository.findByEmail(email.trim().toLowerCase())
+                    .or(() -> customerRepository.findByEmail(email.trim()))
+                    .orElse(null);
+            if (customer == null || response.getCustomerId() == null || !response.getCustomerId().equals(customer.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("Access denied: You can only view your own tickets.");
+            }
+        }
+
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
                 .success(true)
                 .message("Ticket fetched")
@@ -108,7 +146,11 @@ public class TicketController {
     @PostMapping("/{id}/comments")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TicketCommentResponse>> addComment(@PathVariable Long id,
-                                                                         @Valid @RequestBody CreateTicketCommentRequest request) {
+                                                                         @Valid @RequestBody CreateTicketCommentRequest request,
+                                                                         org.springframework.security.core.Authentication auth) {
+        if ((request.getCommentedBy() == null || request.getCommentedBy().isBlank()) && auth != null) {
+            request.setCommentedBy(auth.getName());
+        }
         TicketCommentResponse response = ticketService.addComment(id, request);
         return ResponseEntity.ok(ApiResponse.<TicketCommentResponse>builder()
                 .success(true)

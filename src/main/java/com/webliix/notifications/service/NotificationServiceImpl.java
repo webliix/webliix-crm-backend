@@ -114,51 +114,6 @@ public class NotificationServiceImpl implements NotificationService {
         java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
         List<Notification> list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
 
-        if (list.isEmpty()) {
-            // Seed initial persistent notifications into DB for recipient
-            Notification n1 = Notification.builder()
-                    .title("New High-Intent Lead Captured")
-                    .message("Rahul Sharma submitted a high-value website development inquiry via Webliix LaunchKit.")
-                    .recipient(rec)
-                    .recipientType("USER")
-                    .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
-                    .status(NotificationStatus.PENDING)
-                    .referenceType("LEAD")
-                    .referenceId(104L)
-                    .createdAt(LocalDateTime.now().minusMinutes(10))
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            Notification n2 = Notification.builder()
-                    .title("New Public Blog Comment Posted")
-                    .message("Anonymous Reader posted a comment on article 'Building High-Speed Microservices with Spring Boot 3'.")
-                    .recipient(rec)
-                    .recipientType("USER")
-                    .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
-                    .status(NotificationStatus.PENDING)
-                    .referenceType("BLOG")
-                    .referenceId(1L)
-                    .createdAt(LocalDateTime.now().minusMinutes(45))
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            Notification n3 = Notification.builder()
-                    .title("Security Session Renewal")
-                    .message("Your administrator session was successfully authorized for persistent 7 days access.")
-                    .recipient(rec)
-                    .recipientType("USER")
-                    .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
-                    .status(NotificationStatus.READ)
-                    .referenceType("SECURITY")
-                    .referenceId(1L)
-                    .createdAt(LocalDateTime.now().minusHours(2))
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            notificationRepository.saveAll(List.of(n1, n2, n3));
-            list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
-        }
-
         return list.stream()
                 .map(NotificationMapper::toResponse)
                 .collect(Collectors.toList());

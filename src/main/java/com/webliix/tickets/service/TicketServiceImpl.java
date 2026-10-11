@@ -66,6 +66,17 @@ public class TicketServiceImpl implements TicketService {
             ticket.setCustomer(customerRepository.findById(request.getCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + request.getCustomerId())));
         }
+        if (ticket.getCustomer() == null) {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null) {
+                customerRepository.findByEmail(auth.getName().trim().toLowerCase())
+                        .or(() -> customerRepository.findByEmail(auth.getName().trim()))
+                        .ifPresent(ticket::setCustomer);
+                if (ticket.getCreatedBy() == null || ticket.getCreatedBy().isBlank()) {
+                    ticket.setCreatedBy(auth.getName());
+                }
+            }
+        }
         if (request.getAssignedToId() != null) {
             ticket.setAssignedTo(employeeRepository.findById(request.getAssignedToId())
                     .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + request.getAssignedToId())));
@@ -244,6 +255,15 @@ public class TicketServiceImpl implements TicketService {
         }
         ticket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
+
+        if (request.getCommentedBy() == null || request.getCommentedBy().isBlank()) {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
+                request.setCommentedBy(auth.getName());
+            } else {
+                request.setCommentedBy("Support Staff");
+            }
+        }
 
         TicketComment comment = TicketMapper.toEntity(request);
         comment.setTicket(ticket);

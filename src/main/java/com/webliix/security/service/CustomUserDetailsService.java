@@ -31,6 +31,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
                 if ("SUPER_ADMIN".equals(roleName)) {
                     authorities.add(new SimpleGrantedAuthority("*"));
+                    authorities.add(new SimpleGrantedAuthority("ALL"));
                     authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
                     authorities.add(new SimpleGrantedAuthority("ADMIN"));
                     authorities.add(new SimpleGrantedAuthority("ROLE_MANAGER"));
@@ -39,6 +40,31 @@ public class CustomUserDetailsService implements UserDetailsService {
                     authorities.add(new SimpleGrantedAuthority("HR"));
                     authorities.add(new SimpleGrantedAuthority("ROLE_EMPLOYEE"));
                     authorities.add(new SimpleGrantedAuthority("EMPLOYEE"));
+                    authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                    authorities.add(new SimpleGrantedAuthority("USER"));
+                    authorities.add(new SimpleGrantedAuthority("ROLE_CLIENT"));
+                    authorities.add(new SimpleGrantedAuthority("CLIENT"));
+                    authorities.add(new SimpleGrantedAuthority("PROJECTS_CREATE"));
+                    authorities.add(new SimpleGrantedAuthority("PROJECTS_VIEW"));
+                    authorities.add(new SimpleGrantedAuthority("PROJECTS_EDIT"));
+                    authorities.add(new SimpleGrantedAuthority("PROJECTS_DELETE"));
+                    authorities.add(new SimpleGrantedAuthority("TICKETS_CREATE"));
+                    authorities.add(new SimpleGrantedAuthority("TICKETS_VIEW"));
+                    authorities.add(new SimpleGrantedAuthority("TICKETS_EDIT"));
+                    authorities.add(new SimpleGrantedAuthority("TICKETS_DELETE"));
+                    authorities.add(new SimpleGrantedAuthority("INVOICES_CREATE"));
+                    authorities.add(new SimpleGrantedAuthority("INVOICES_VIEW"));
+                    authorities.add(new SimpleGrantedAuthority("INVOICES_EDIT"));
+                    authorities.add(new SimpleGrantedAuthority("INVOICES_DELETE"));
+                    authorities.add(new SimpleGrantedAuthority("LEADS_CREATE"));
+                    authorities.add(new SimpleGrantedAuthority("LEADS_VIEW"));
+                    authorities.add(new SimpleGrantedAuthority("LEADS_EDIT"));
+                    authorities.add(new SimpleGrantedAuthority("LEADS_DELETE"));
+                    authorities.add(new SimpleGrantedAuthority("LEADS_CONVERT"));
+                    authorities.add(new SimpleGrantedAuthority("CUSTOMERS_CREATE"));
+                    authorities.add(new SimpleGrantedAuthority("CUSTOMERS_VIEW"));
+                    authorities.add(new SimpleGrantedAuthority("CUSTOMERS_EDIT"));
+                    authorities.add(new SimpleGrantedAuthority("CUSTOMERS_DELETE"));
                 }
             }
         }

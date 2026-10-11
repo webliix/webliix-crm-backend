@@ -15,6 +15,5 @@ public class CreateTicketCommentRequest {
     @NotBlank
     private String comment;
 
-    @NotBlank
     private String commentedBy;
 }

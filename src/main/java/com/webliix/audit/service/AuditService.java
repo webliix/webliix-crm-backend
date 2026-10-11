@@ -59,7 +59,7 @@ public class AuditService {
                 .entityId(entityId)
                 .oldValue(toJson(oldValue))
                 .newValue(toJson(newValue))
-                .ipAddress(request != null ? request.getRemoteAddr() : null)
+                .ipAddress(resolveIpAddress(request))
                 .userAgent(request != null ? request.getHeader("User-Agent") : null)
                 .status(status)
                 .createdAt(LocalDateTime.now())
@@ -108,26 +108,37 @@ public class AuditService {
 
     private String resolveUsername(HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()) {
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserDetails userDetails) {
-                return userDetails.getUsername();
-            }
-            if (principal instanceof String username) {
-                return username;
+        if (authentication != null && authentication.isAuthenticated() && authentication.getName() != null) {
+            String name = authentication.getName();
+            if (!"anonymousUser".equalsIgnoreCase(name)) {
+                return name;
             }
         }
         if (request != null && request.getUserPrincipal() != null) {
             return request.getUserPrincipal().getName();
         }
-        return null;
+        return "anonymous";
+    }
+
+    private String resolveIpAddress(HttpServletRequest request) {
+        if (request == null) return null;
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        } else if (ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 
     private Long resolveUserId(String username) {
-        if (!StringUtils.hasText(username)) {
+        if (!StringUtils.hasText(username) || "anonymous".equalsIgnoreCase(username)) {
             return null;
         }
-        return userRepository.findByEmail(username)
+        return userRepository.findByEmail(username.trim().toLowerCase())
                 .map(user -> user.getId())
                 .orElse(null);
     }

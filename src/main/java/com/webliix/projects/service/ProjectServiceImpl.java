@@ -74,9 +74,24 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectResponse getProject(Long id, org.springframework.security.core.Authentication auth) {
         Project project = findProjectById(id);
-        if (isCustomer(auth)) {
+        if (isCustomer(auth) || !isStaff(auth)) {
             String email = auth != null ? auth.getName() : "";
-            if (project.getCustomer() == null || project.getCustomer().getEmail() == null || !project.getCustomer().getEmail().equalsIgnoreCase(email)) {
+            boolean isOwner = project.getCustomer() != null
+                    && project.getCustomer().getEmail() != null
+                    && project.getCustomer().getEmail().trim().equalsIgnoreCase(email.trim());
+
+            boolean isAssignedMember = false;
+            if (auth != null && email != null) {
+                var callerUser = userRepository.findByEmail(email.trim().toLowerCase())
+                        .or(() -> userRepository.findByEmail(email.trim()));
+                if (callerUser.isPresent()) {
+                    Long currentUserId = callerUser.get().getId();
+                    isAssignedMember = memberRepository.findByProjectId(id).stream().anyMatch(m ->
+                            m.getUserId() != null && m.getUserId().equals(currentUserId)
+                    );
+                }
+            }
+            if (!isOwner && !isAssignedMember) {
                 throw new org.springframework.security.access.AccessDeniedException("Access denied: You can only view your own customer projects.");
             }
         }
@@ -94,10 +109,23 @@ public class ProjectServiceImpl implements ProjectService {
             String email = auth != null ? auth.getName() : "";
             return projectRepository.findByCustomerEmail(email, pageable).map(ProjectMapper::toResponse);
         }
-        if (customerId != null) {
-            return projectRepository.findByCustomerId(customerId, pageable).map(ProjectMapper::toResponse);
+        if (isStaff(auth)) {
+            if (customerId != null) {
+                return projectRepository.findByCustomerId(customerId, pageable).map(ProjectMapper::toResponse);
+            }
+            return projectRepository.findAll(pageable).map(ProjectMapper::toResponse);
         }
-        return projectRepository.findAll(pageable).map(ProjectMapper::toResponse);
+
+        // Non-staff caller:
+        String email = auth != null ? auth.getName() : "";
+        if (email != null && !email.isBlank()) {
+            var cust = customerRepository.findByEmail(email.trim().toLowerCase())
+                    .or(() -> customerRepository.findByEmail(email.trim()));
+            if (cust.isPresent()) {
+                return projectRepository.findByCustomerEmail(email, pageable).map(ProjectMapper::toResponse);
+            }
+        }
+        return Page.empty(pageable);
     }
 
     @Override
@@ -137,7 +165,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public Page<ProjectResponse> searchProjects(String keyword, Pageable pageable, org.springframework.security.core.Authentication auth) {
-        if (isCustomer(auth)) {
+        if (isCustomer(auth) || !isStaff(auth)) {
             String email = auth != null ? auth.getName() : "";
             return projectRepository.findByCustomerEmailWithSearch(email, keyword, pageable)
                     .map(ProjectMapper::toResponse);
@@ -146,20 +174,34 @@ public class ProjectServiceImpl implements ProjectService {
                 .map(ProjectMapper::toResponse);
     }
 
-    private boolean isCustomer(org.springframework.security.core.Authentication auth) {
+    private boolean isStaff(org.springframework.security.core.Authentication auth) {
         if (auth == null) return false;
-        boolean isStaff = auth.getAuthorities().stream().anyMatch(a -> {
-            String authName = a.getAuthority();
+        return auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority().toUpperCase();
             return "ROLE_ADMIN".equals(authName) || "ADMIN".equals(authName)
                     || "ROLE_SUPER_ADMIN".equals(authName) || "SUPER_ADMIN".equals(authName)
                     || "ROLE_MANAGER".equals(authName) || "MANAGER".equals(authName)
-                    || "ROLE_EMPLOYEE".equals(authName) || "EMPLOYEE".equals(authName);
+                    || "ROLE_HR".equals(authName) || "HR".equals(authName);
         });
-        if (isStaff) return false;
-        return auth.getAuthorities().stream().anyMatch(a -> 
-            "ROLE_USER".equals(a.getAuthority()) || "USER".equals(a.getAuthority())
-            || "ROLE_CUSTOMER".equals(a.getAuthority()) || "CUSTOMER".equals(a.getAuthority())
-        );
+    }
+
+    private boolean isCustomer(org.springframework.security.core.Authentication auth) {
+        if (auth == null) return false;
+        if (isStaff(auth)) return false;
+        boolean hasCustomerAuthority = auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority().toUpperCase();
+            return "ROLE_USER".equals(authName) || "USER".equals(authName)
+                    || "ROLE_CUSTOMER".equals(authName) || "CUSTOMER".equals(authName)
+                    || "ROLE_CLIENT".equals(authName) || "CLIENT".equals(authName);
+        });
+        if (hasCustomerAuthority) return true;
+
+        String email = auth.getName();
+        if (email != null && !email.isBlank()) {
+            return customerRepository.findByEmail(email.trim().toLowerCase()).isPresent()
+                    || customerRepository.findByEmail(email.trim()).isPresent();
+        }
+        return false;
     }
 
     @Override

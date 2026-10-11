@@ -22,9 +22,10 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     Page<Project> findByCustomerId(Long customerId, Pageable pageable);
 
-    Page<Project> findByCustomerEmail(String email, Pageable pageable);
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Project p WHERE p.customer IS NOT NULL AND LOWER(TRIM(p.customer.email)) = LOWER(TRIM(:email))")
+    Page<Project> findByCustomerEmail(@org.springframework.data.repository.query.Param("email") String email, Pageable pageable);
 
-    @org.springframework.data.jpa.repository.Query("SELECT p FROM Project p WHERE LOWER(p.customer.email) = LOWER(:email) AND (:search IS NULL OR LOWER(p.projectName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Project p WHERE p.customer IS NOT NULL AND LOWER(TRIM(p.customer.email)) = LOWER(TRIM(:email)) AND (:search IS NULL OR LOWER(p.projectName) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Project> findByCustomerEmailWithSearch(@org.springframework.data.repository.query.Param("email") String email, @org.springframework.data.repository.query.Param("search") String search, Pageable pageable);
 
     long countByStatus(ProjectStatus status);
