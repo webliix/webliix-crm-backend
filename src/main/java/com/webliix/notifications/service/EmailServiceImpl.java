@@ -8,12 +8,15 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 @Service
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
     private final MailSenderStrategy mailSenderStrategy;
+    private final com.webliix.notifications.repository.EmailTemplateRepository emailTemplateRepository;
+    private final com.webliix.settings.service.SettingsCacheService settingsCacheService;
 
     @Value("${mail.automated.from:${mail.contact.from:contact@webliix.com}}")
     private String automatedFromEmail;
@@ -27,8 +30,13 @@ public class EmailServiceImpl implements EmailService {
     @Value("${mail.contact.from-name:Webliix Team}")
     private String contactFromName;
 
-    public EmailServiceImpl(MailSenderStrategy mailSenderStrategy) {
+    public EmailServiceImpl(
+            MailSenderStrategy mailSenderStrategy,
+            com.webliix.notifications.repository.EmailTemplateRepository emailTemplateRepository,
+            com.webliix.settings.service.SettingsCacheService settingsCacheService) {
         this.mailSenderStrategy = mailSenderStrategy;
+        this.emailTemplateRepository = emailTemplateRepository;
+        this.settingsCacheService = settingsCacheService;
     }
 
     @Async
@@ -47,6 +55,12 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendAutomatedHtmlEmail(String to, String subject, String htmlBody) {
         try {
+            com.webliix.settings.entity.SystemSetting globalSetting = settingsCacheService.getByKey("notify.global.email_enabled");
+            if (globalSetting != null && "false".equalsIgnoreCase(globalSetting.getSettingValue())) {
+                log.info("Global email dispatch disabled in system settings. Suppressed email to: {}", to);
+                return;
+            }
+
             boolean success = mailSenderStrategy.sendMail(
                     automatedFromEmail,
                     automatedFromName,
@@ -190,6 +204,13 @@ public class EmailServiceImpl implements EmailService {
 
     private String loadTemplate(String templateName) {
         try {
+            // First check customized template in DB
+            Optional<com.webliix.notifications.entity.EmailTemplate> dbTemplate = emailTemplateRepository.findByTemplateKey(templateName);
+            if (dbTemplate.isPresent() && Boolean.TRUE.equals(dbTemplate.get().getIsActive()) && dbTemplate.get().getHtmlContent() != null) {
+                return dbTemplate.get().getHtmlContent();
+            }
+
+            // Fallback to classpath template
             InputStream is = getClass().getResourceAsStream("/templates/emails/" + templateName + ".html");
             if (is != null) {
                 return new String(is.readAllBytes(), StandardCharsets.UTF_8);

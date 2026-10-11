@@ -61,6 +61,12 @@ public class Project {
     @Column(name = "documentation_url", length = 500)
     private String documentationUrl;
 
+    @Column(length = 10)
+    private String currency;
+
+    @Column(name = "billing_type", length = 50)
+    private String billingType;
+
     @Column(name = "architecture_notes", columnDefinition = "TEXT")
     private String architectureNotes;
 

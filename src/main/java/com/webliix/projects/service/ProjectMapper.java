@@ -20,6 +20,8 @@ public class ProjectMapper {
         project.setStatus(request.getStatus() != null ? request.getStatus() : com.webliix.projects.enums.ProjectStatus.PLANNING);
         project.setPriority(request.getPriority() != null ? request.getPriority() : com.webliix.projects.enums.ProjectPriority.MEDIUM);
         project.setBillable(request.getBillable() != null ? request.getBillable() : false);
+        project.setCurrency(request.getCurrency() != null ? request.getCurrency() : "USD");
+        project.setBillingType(request.getBillingType() != null ? request.getBillingType() : "FIXED");
         project.setDocumentationUrl(request.getDocumentationUrl());
         project.setArchitectureNotes(request.getArchitectureNotes());
         project.setProgressPercentage(0);
@@ -33,6 +35,8 @@ public class ProjectMapper {
         response.setProjectName(project.getProjectName());
         response.setDescription(project.getDescription());
         response.setBudget(project.getBudget());
+        response.setCurrency(project.getCurrency() != null ? project.getCurrency() : "USD");
+        response.setBillingType(project.getBillingType() != null ? project.getBillingType() : "FIXED");
         response.setStartDate(project.getStartDate());
         response.setExpectedEndDate(project.getExpectedEndDate());
         response.setActualEndDate(project.getActualEndDate());
@@ -82,6 +86,12 @@ public class ProjectMapper {
         }
         if (request.getBillable() != null) {
             project.setBillable(request.getBillable());
+        }
+        if (request.getCurrency() != null) {
+            project.setCurrency(request.getCurrency());
+        }
+        if (request.getBillingType() != null) {
+            project.setBillingType(request.getBillingType());
         }
         if (request.getDocumentationUrl() != null) {
             project.setDocumentationUrl(request.getDocumentationUrl());

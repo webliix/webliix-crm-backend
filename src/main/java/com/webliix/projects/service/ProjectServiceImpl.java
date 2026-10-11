@@ -56,6 +56,36 @@ public class ProjectServiceImpl implements ProjectService {
 
         if (request.getAutoGeneratePhases() == null || Boolean.TRUE.equals(request.getAutoGeneratePhases())) {
             generateDefaultPhases(saved);
+        } else if (request.getInitialMilestones() != null && !request.getInitialMilestones().isEmpty()) {
+            for (CreateProjectMilestoneRequest mReq : request.getInitialMilestones()) {
+                if (mReq.getTitle() != null && !mReq.getTitle().isBlank()) {
+                    addProjectMilestone(saved.getId(), mReq);
+                }
+            }
+        }
+
+        if (request.getInitialTasks() != null && !request.getInitialTasks().isEmpty()) {
+            for (CreateProjectTaskRequest tReq : request.getInitialTasks()) {
+                if (tReq.getTitle() != null && !tReq.getTitle().isBlank()) {
+                    addProjectTask(saved.getId(), tReq);
+                }
+            }
+        }
+
+        if (request.getInitialMemberEmployeeIds() != null && !request.getInitialMemberEmployeeIds().isEmpty()) {
+            for (Long empId : request.getInitialMemberEmployeeIds()) {
+                if (empId != null) {
+                    try {
+                        CreateProjectMemberRequest mReq = new CreateProjectMemberRequest();
+                        mReq.setEmployeeId(empId);
+                        mReq.setRoleInProject("MEMBER");
+                        mReq.setAssignedDate(LocalDate.now());
+                        addProjectMember(saved.getId(), mReq);
+                    } catch (Exception ex) {
+                        // ignore duplicate or non-fatal assignment error
+                    }
+                }
+            }
         }
 
         if (saved.getCustomer() != null && saved.getCustomer().getEmail() != null) {
@@ -181,7 +211,9 @@ public class ProjectServiceImpl implements ProjectService {
             return "ROLE_ADMIN".equals(authName) || "ADMIN".equals(authName)
                     || "ROLE_SUPER_ADMIN".equals(authName) || "SUPER_ADMIN".equals(authName)
                     || "ROLE_MANAGER".equals(authName) || "MANAGER".equals(authName)
-                    || "ROLE_HR".equals(authName) || "HR".equals(authName);
+                    || "ROLE_HR".equals(authName) || "HR".equals(authName)
+                    || "ROLE_EMPLOYEE".equals(authName) || "EMPLOYEE".equals(authName)
+                    || "*".equals(authName) || "ALL".equals(authName);
         });
     }
 

@@ -16,6 +16,8 @@ public class ProjectResponse {
     private String projectName;
     private String description;
     private BigDecimal budget;
+    private String currency;
+    private String billingType;
     private LocalDate startDate;
     private LocalDate expectedEndDate;
     private LocalDate actualEndDate;
@@ -32,4 +34,3 @@ public class ProjectResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-

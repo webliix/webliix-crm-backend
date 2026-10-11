@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class CreateProjectRequest {
@@ -13,6 +14,8 @@ public class CreateProjectRequest {
     private String projectName;
     private String description;
     private BigDecimal budget;
+    private String currency;
+    private String billingType;
     private LocalDate startDate;
     private LocalDate expectedEndDate;
     private LocalDate actualEndDate;
@@ -23,5 +26,8 @@ public class CreateProjectRequest {
     private String documentationUrl;
     private String architectureNotes;
     private Boolean autoGeneratePhases;
-}
 
+    private List<CreateProjectMilestoneRequest> initialMilestones;
+    private List<CreateProjectTaskRequest> initialTasks;
+    private List<Long> initialMemberEmployeeIds;
+}

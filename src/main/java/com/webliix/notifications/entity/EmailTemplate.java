@@ -38,9 +38,17 @@ public class EmailTemplate {
     private String plainTextContent;
 
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
+    @Column(length = 500)
+    private String description;
+
+    @Column(name = "sample_variables", columnDefinition = "TEXT")
+    private String sampleVariables;
+
     @Column(name = "version")
+    @Builder.Default
     private Integer version = 1;
 
     @Column(name = "created_at")
