@@ -2,6 +2,7 @@ package com.webliix.newsletter.controller;
 
 import com.webliix.newsletter.dto.NewsletterSubscriberResponse;
 import com.webliix.newsletter.service.NewsletterService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/newsletter")
 @RequiredArgsConstructor
+@RequirePermission("NEWSLETTER_MANAGE")
 public class NewsletterController {
 
     private final NewsletterService newsletterService;

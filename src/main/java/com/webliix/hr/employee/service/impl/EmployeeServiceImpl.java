@@ -298,7 +298,25 @@ public class EmployeeServiceImpl implements EmployeeService {
             response.setDesignationName(employee.getDesignation().getDesignationName());
         }
         response.setJoiningDate(employee.getJoiningDate());
-        response.setSalary(employee.getSalary());
+
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean canViewSalary = false;
+        if (auth != null && auth.isAuthenticated()) {
+            Object principal = auth.getPrincipal();
+            if (principal instanceof com.webliix.security.model.WebliixPrincipal wp) {
+                if (wp.isSuperAdmin() || wp.hasPermission("EMPLOYEES_SALARY_VIEW") || wp.hasPermission("PAYROLL_VIEW")) {
+                    canViewSalary = true;
+                } else if (employee.getUser() != null && employee.getUser().getId().equals(wp.getUserId())) {
+                    canViewSalary = true;
+                }
+            } else {
+                canViewSalary = auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("EMPLOYEES_SALARY_VIEW")
+                                || a.getAuthority().equals("ROLE_SUPER_ADMIN")
+                                || a.getAuthority().equals("SUPER_ADMIN"));
+            }
+        }
+        response.setSalary(canViewSalary ? employee.getSalary() : null);
         response.setEmploymentType(employee.getEmploymentType());
         response.setActive(employee.getActive());
         response.setAddress(employee.getAddress());

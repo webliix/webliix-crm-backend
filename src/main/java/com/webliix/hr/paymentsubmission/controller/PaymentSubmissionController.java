@@ -4,13 +4,13 @@ import com.webliix.hr.paymentsubmission.dto.PaymentSubmissionRequest;
 import com.webliix.hr.paymentsubmission.dto.PaymentSubmissionResponse;
 import com.webliix.hr.paymentsubmission.dto.PaymentSubmissionReviewRequest;
 import com.webliix.hr.paymentsubmission.service.PaymentSubmissionService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +24,7 @@ public class PaymentSubmissionController {
     // === EMPLOYEE SELF-SERVICE ROUTES ===
 
     @PostMapping("/employee/me/payment-submissions")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("PAYMENT_SUBMISSIONS_SUBMIT")
     public ResponseEntity<ApiResponse<PaymentSubmissionResponse>> submitPayment(
             @RequestBody PaymentSubmissionRequest request,
             Authentication auth) {
@@ -34,7 +34,7 @@ public class PaymentSubmissionController {
     }
 
     @GetMapping("/employee/me/payment-submissions")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission(anyOf = {"PAYMENT_SUBMISSIONS_SUBMIT", "PAYMENT_SUBMISSIONS_VIEW"})
     public ResponseEntity<ApiResponse<Page<PaymentSubmissionResponse>>> getMySubmissions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -48,7 +48,7 @@ public class PaymentSubmissionController {
     // === ADMIN/FINANCE REVIEW ROUTES ===
 
     @GetMapping("/payment-submissions")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("PAYMENT_SUBMISSIONS_VIEW")
     public ResponseEntity<ApiResponse<Page<PaymentSubmissionResponse>>> getAllSubmissions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -62,7 +62,7 @@ public class PaymentSubmissionController {
     }
 
     @GetMapping("/payment-submissions/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission("PAYMENT_SUBMISSIONS_VIEW")
     public ResponseEntity<ApiResponse<PaymentSubmissionResponse>> getSubmission(
             @PathVariable Long id,
             Authentication auth) {
@@ -72,7 +72,7 @@ public class PaymentSubmissionController {
     }
 
     @PatchMapping("/payment-submissions/{id}/review")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("PAYMENT_SUBMISSIONS_REVIEW")
     public ResponseEntity<ApiResponse<PaymentSubmissionResponse>> reviewSubmission(
             @PathVariable Long id,
             @RequestBody PaymentSubmissionReviewRequest request,
@@ -83,7 +83,7 @@ public class PaymentSubmissionController {
     }
 
     @DeleteMapping("/payment-submissions/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"PAYMENT_SUBMISSIONS_SUBMIT", "PAYMENT_SUBMISSIONS_VIEW"})
     public ResponseEntity<ApiResponse<Void>> deleteSubmission(
             @PathVariable Long id,
             Authentication auth) {

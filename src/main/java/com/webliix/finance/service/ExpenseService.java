@@ -13,6 +13,7 @@ public interface ExpenseService {
     ExpenseResponse createExpense(ExpenseRequest request);
     Page<ExpenseResponse> getAllExpenses(Pageable pageable);
     Page<ExpenseResponse> getExpenses(ExpenseCategory category, String status, String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<ExpenseResponse> getMyExpenses(Pageable pageable);
     ExpenseResponse getExpense(Long id);
     ExpenseResponse updateExpense(Long id, ExpenseRequest request);
     void deleteExpense(Long id);

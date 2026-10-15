@@ -1,5 +1,6 @@
 package com.webliix.portal.controller;
 
+import com.webliix.security.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/portal/dashboard")
 @RequiredArgsConstructor
+@RequirePermission("CLIENT_PORTAL_ACCESS")
 public class PortalDashboardController {
 
     @GetMapping

@@ -12,6 +12,9 @@ import com.webliix.crm.lead.repository.LeadRepository;
 import com.webliix.crm.lead.service.LeadService;
 import com.webliix.notifications.event.LeadCreatedEvent;
 import com.webliix.notifications.service.EmailService;
+import com.webliix.security.scoping.DataScope;
+import com.webliix.security.scoping.DataScopeService;
+import com.webliix.security.scoping.ScopeSpecs;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +36,16 @@ public class LeadServiceImpl implements LeadService {
     private final LeadRepository leadRepository;
     private final EmailService emailService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DataScopeService dataScopeService;
 
     @Override
     public LeadResponse createLead(CreateLeadRequest request) {
+        DataScope scope = dataScopeService.resolve("LEADS_CREATE");
         Lead lead = LeadMapper.toEntity(request);
+        if (scope.getUserId() != null) {
+            lead.setCreatedByUserId(scope.getUserId());
+            lead.setDepartmentId(scope.getDepartmentId());
+        }
         Lead saved = leadRepository.save(lead);
         eventPublisher.publishEvent(new LeadCreatedEvent(this, saved.getId(), saved.getContactPerson(), saved.getEmail()));
         return LeadMapper.toResponse(saved);
@@ -138,12 +147,17 @@ public class LeadServiceImpl implements LeadService {
     public LeadResponse getLead(Long id) {
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
+        DataScope scope = dataScopeService.resolve("LEADS_VIEW");
+        if (!scope.isAll() && lead.getAssignedTo() != null && !lead.getAssignedTo().equals(scope.getUserId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Access denied to this lead");
+        }
         return LeadMapper.toResponse(lead);
     }
 
     @Override
     public Page<LeadResponse> getAllLeads(Pageable pageable) {
-        return leadRepository.findAll(pageable).map(LeadMapper::toResponse);
+        DataScope scope = dataScopeService.resolve("LEADS_VIEW");
+        return leadRepository.findAll(ScopeSpecs.leadScope(scope), pageable).map(LeadMapper::toResponse);
     }
 
     @Override
@@ -167,5 +181,16 @@ public class LeadServiceImpl implements LeadService {
     public Page<LeadResponse> searchLeads(String keyword, Pageable pageable) {
         return leadRepository.searchLeads(keyword, pageable)
                 .map(LeadMapper::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public LeadResponse assignLead(Long id, Long assignedToUserId) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
+        lead.setAssignedTo(assignedToUserId);
+        lead.setUpdatedAt(LocalDateTime.now());
+        Lead saved = leadRepository.save(lead);
+        return LeadMapper.toResponse(saved);
     }
 }

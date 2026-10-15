@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -31,5 +33,7 @@ public class CreateUserRequest {
 
     private String department;
 
-    private String role; // e.g., SUPER_ADMIN, ADMIN, EMPLOYEE, HR, USER
+    private String role; // Backward compatible single role
+
+    private List<String> roles; // Multi-role support
 }

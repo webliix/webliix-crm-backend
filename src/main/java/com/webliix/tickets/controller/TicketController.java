@@ -1,12 +1,13 @@
 package com.webliix.tickets.controller;
 
+import com.webliix.security.annotation.RequirePermission;
+import com.webliix.security.evaluator.PermissionEvaluator;
 import com.webliix.shared.response.ApiResponse;
 import com.webliix.tickets.dto.*;
 import com.webliix.tickets.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,9 +19,10 @@ public class TicketController {
 
     private final TicketService ticketService;
     private final com.webliix.crm.customer.repository.CustomerRepository customerRepository;
+    private final PermissionEvaluator permissionEvaluator;
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_CREATE", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> createTicket(
             @Valid @RequestBody CreateTicketRequest request,
             org.springframework.security.core.Authentication auth) {
@@ -36,16 +38,13 @@ public class TicketController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<List<TicketResponse>>> getTickets(
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) Long customerId,
             org.springframework.security.core.Authentication auth) {
         
-        boolean isStaff = auth != null && auth.getAuthorities().stream().anyMatch(a -> {
-            String role = a.getAuthority().toUpperCase();
-            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("EMPLOYEE") || role.contains("HR") || role.equals("*");
-        });
+        boolean isStaff = permissionEvaluator.has("TICKETS_VIEW");
 
         List<TicketResponse> response;
         if (!isStaff) {
@@ -74,7 +73,7 @@ public class TicketController {
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<List<TicketResponse>>> getTicketsByProject(@PathVariable Long projectId) {
         List<TicketResponse> response = ticketService.getTicketsByProject(projectId);
         return ResponseEntity.ok(ApiResponse.<List<TicketResponse>>builder()
@@ -85,16 +84,13 @@ public class TicketController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> getTicket(
             @PathVariable Long id,
             org.springframework.security.core.Authentication auth) {
         TicketResponse response = ticketService.getTicket(id);
 
-        boolean isStaff = auth != null && auth.getAuthorities().stream().anyMatch(a -> {
-            String role = a.getAuthority().toUpperCase();
-            return role.contains("ADMIN") || role.contains("MANAGER") || role.contains("EMPLOYEE") || role.contains("HR") || role.equals("*");
-        });
+        boolean isStaff = permissionEvaluator.has("TICKETS_VIEW");
 
         if (!isStaff) {
             String email = auth != null ? auth.getName() : "";
@@ -114,7 +110,7 @@ public class TicketController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('TICKETS_EDIT', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @RequirePermission("TICKETS_EDIT")
     public ResponseEntity<ApiResponse<TicketResponse>> updateTicket(@PathVariable Long id,
                                                                     @RequestBody UpdateTicketRequest request) {
         TicketResponse response = ticketService.updateTicket(id, request);
@@ -126,7 +122,7 @@ public class TicketController {
     }
 
     @PutMapping("/{id}/assign")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @RequirePermission("TICKETS_ASSIGN")
     public ResponseEntity<ApiResponse<TicketResponse>> assignTicket(@PathVariable Long id,
                                                                     @Valid @RequestBody AssignTicketRequest request) {
         TicketResponse response = ticketService.assignTicket(id, request);
@@ -138,7 +134,7 @@ public class TicketController {
     }
 
     @GetMapping("/{id}/comments")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<List<TicketCommentResponse>>> getComments(@PathVariable Long id) {
         List<TicketCommentResponse> response = ticketService.getTicketComments(id);
         return ResponseEntity.ok(ApiResponse.<List<TicketCommentResponse>>builder()
@@ -149,7 +145,7 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/comments")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketCommentResponse>> addComment(@PathVariable Long id,
                                                                          @Valid @RequestBody CreateTicketCommentRequest request,
                                                                          org.springframework.security.core.Authentication auth) {
@@ -165,7 +161,7 @@ public class TicketController {
     }
 
     @PostMapping("/{id}/attachments")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketAttachmentResponse>> addAttachment(@PathVariable Long id,
                                                                                @Valid @RequestBody CreateTicketAttachmentRequest request) {
         TicketAttachmentResponse response = ticketService.addAttachment(id, request);
@@ -177,7 +173,7 @@ public class TicketController {
     }
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @RequirePermission("TICKETS_VIEW")
     public ResponseEntity<ApiResponse<TicketDashboardResponse>> getDashboard() {
         TicketDashboardResponse response = ticketService.getDashboard();
         return ResponseEntity.ok(ApiResponse.<TicketDashboardResponse>builder()

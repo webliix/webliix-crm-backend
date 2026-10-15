@@ -2,11 +2,11 @@ package com.webliix.notifications.controller;
 
 import com.webliix.notifications.dto.*;
 import com.webliix.notifications.service.EmailTemplateService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +23,7 @@ public class EmailTemplateController {
     // =========================================================================
 
     @GetMapping("/email-templates")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<List<EmailTemplateResponse>>> getAllTemplates() {
         List<EmailTemplateResponse> list = emailTemplateService.getAllTemplates();
         return ResponseEntity.ok(ApiResponse.<List<EmailTemplateResponse>>builder()
@@ -34,7 +34,7 @@ public class EmailTemplateController {
     }
 
     @GetMapping("/email-templates/{id}")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<EmailTemplateResponse>> getTemplate(@PathVariable Long id) {
         EmailTemplateResponse response = emailTemplateService.getTemplateById(id);
         return ResponseEntity.ok(ApiResponse.<EmailTemplateResponse>builder()
@@ -45,7 +45,7 @@ public class EmailTemplateController {
     }
 
     @PutMapping("/email-templates/{id}")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<EmailTemplateResponse>> updateTemplate(
             @PathVariable Long id,
             @Valid @RequestBody UpdateEmailTemplateRequest request) {
@@ -58,7 +58,7 @@ public class EmailTemplateController {
     }
 
     @PatchMapping("/email-templates/{id}/toggle")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<EmailTemplateResponse>> toggleTemplate(@PathVariable Long id) {
         EmailTemplateResponse response = emailTemplateService.toggleTemplate(id);
         return ResponseEntity.ok(ApiResponse.<EmailTemplateResponse>builder()
@@ -69,7 +69,7 @@ public class EmailTemplateController {
     }
 
     @PostMapping("/email-templates/{id}/preview")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<String>> previewTemplate(
             @PathVariable Long id,
             @RequestBody(required = false) PreviewEmailTemplateRequest request) {
@@ -82,7 +82,7 @@ public class EmailTemplateController {
     }
 
     @PostMapping("/email-templates/{id}/test-send")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<Boolean>> testSendTemplate(
             @PathVariable Long id,
             @Valid @RequestBody TestSendEmailTemplateRequest request) {
@@ -95,7 +95,7 @@ public class EmailTemplateController {
     }
 
     @PostMapping("/email-templates/{id}/reset")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EMAIL_TEMPLATES_MANAGE")
     public ResponseEntity<ApiResponse<EmailTemplateResponse>> resetTemplate(@PathVariable Long id) {
         EmailTemplateResponse response = emailTemplateService.resetTemplateToDefault(id);
         return ResponseEntity.ok(ApiResponse.<EmailTemplateResponse>builder()
@@ -110,7 +110,7 @@ public class EmailTemplateController {
     // =========================================================================
 
     @GetMapping("/settings/notifications")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission(anyOf = {"SETTINGS_MANAGE", "SETTINGS_VIEW"})
     public ResponseEntity<ApiResponse<NotificationRulesResponse>> getNotificationRules() {
         NotificationRulesResponse response = emailTemplateService.getNotificationRules();
         return ResponseEntity.ok(ApiResponse.<NotificationRulesResponse>builder()
@@ -121,7 +121,7 @@ public class EmailTemplateController {
     }
 
     @PutMapping("/settings/notifications")
-    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("SETTINGS_MANAGE")
     public ResponseEntity<ApiResponse<NotificationRulesResponse>> updateNotificationRules(
             @RequestBody UpdateNotificationRulesRequest request) {
         NotificationRulesResponse response = emailTemplateService.updateNotificationRules(request);

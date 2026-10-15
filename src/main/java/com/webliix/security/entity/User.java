@@ -51,6 +51,10 @@ public class User {
     @Builder.Default
     private Boolean emailVerified = false;
 
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private Integer tokenVersion = 0;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

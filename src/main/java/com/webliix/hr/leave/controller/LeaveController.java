@@ -6,6 +6,7 @@ import com.webliix.hr.leave.dto.LeaveRequestDto;
 import com.webliix.hr.leave.dto.LeaveResponse;
 import com.webliix.hr.leave.service.LeaveBalanceService;
 import com.webliix.hr.leave.service.LeaveService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,44 +24,51 @@ public class LeaveController {
     private final LeaveBalanceService leaveBalanceService;
 
     @PostMapping
+    @RequirePermission(anyOf = {"LEAVE_APPLY", "EMPLOYEE_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<LeaveResponse>> applyLeave(@RequestBody LeaveRequestDto request) {
         LeaveResponse response = leaveService.applyLeave(request);
         return ResponseEntity.ok(ApiResponse.<LeaveResponse>builder().success(true).message("Leave request created").data(response).build());
     }
 
     @GetMapping
+    @RequirePermission(anyOf = {"LEAVE_VIEW", "EMPLOYEE_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<Page<LeaveResponse>>> getLeaves(@RequestParam(defaultValue = "0") int page,
-                                                                       @RequestParam(defaultValue = "20") int size) {
+                                                                        @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<LeaveResponse> response = leaveService.getAllLeaves(pageable);
         return ResponseEntity.ok(ApiResponse.<Page<LeaveResponse>>builder().success(true).message("Leave requests fetched").data(response).build());
     }
 
     @GetMapping("/{id}")
+    @RequirePermission(anyOf = {"LEAVE_VIEW", "EMPLOYEE_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<LeaveResponse>> getLeave(@PathVariable Long id) {
         LeaveResponse response = leaveService.getLeave(id);
         return ResponseEntity.ok(ApiResponse.<LeaveResponse>builder().success(true).message("Leave request fetched").data(response).build());
     }
 
     @PutMapping("/{id}/approve")
+    @RequirePermission("LEAVE_APPROVE")
     public ResponseEntity<ApiResponse<LeaveResponse>> approveLeave(@PathVariable Long id) {
         LeaveResponse response = leaveService.approveLeave(id);
         return ResponseEntity.ok(ApiResponse.<LeaveResponse>builder().success(true).message("Leave request approved").data(response).build());
     }
 
     @PutMapping("/{id}/reject")
+    @RequirePermission("LEAVE_APPROVE")
     public ResponseEntity<ApiResponse<LeaveResponse>> rejectLeave(@PathVariable Long id) {
         LeaveResponse response = leaveService.rejectLeave(id);
         return ResponseEntity.ok(ApiResponse.<LeaveResponse>builder().success(true).message("Leave request rejected").data(response).build());
     }
 
     @PostMapping("/balances")
+    @RequirePermission("LEAVE_BALANCE_MANAGE")
     public ResponseEntity<ApiResponse<LeaveBalanceResponse>> createLeaveBalance(@RequestBody LeaveBalanceRequest request) {
         LeaveBalanceResponse response = leaveBalanceService.createLeaveBalance(request);
         return ResponseEntity.ok(ApiResponse.<LeaveBalanceResponse>builder().success(true).message("Leave balance created").data(response).build());
     }
 
     @GetMapping("/balances")
+    @RequirePermission(anyOf = {"LEAVE_BALANCE_MANAGE", "LEAVE_VIEW", "EMPLOYEE_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<Page<LeaveBalanceResponse>>> getLeaveBalances(@RequestParam(defaultValue = "0") int page,
                                                                                     @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -69,6 +77,7 @@ public class LeaveController {
     }
 
     @GetMapping("/balances/{id}")
+    @RequirePermission(anyOf = {"LEAVE_BALANCE_MANAGE", "LEAVE_VIEW", "EMPLOYEE_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<LeaveBalanceResponse>> getLeaveBalance(@PathVariable Long id) {
         LeaveBalanceResponse response = leaveBalanceService.getLeaveBalance(id);
         return ResponseEntity.ok(ApiResponse.<LeaveBalanceResponse>builder().success(true).message("Leave balance fetched").data(response).build());

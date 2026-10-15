@@ -10,5 +10,6 @@ public enum AuditAction {
     REJECT,
     ASSIGN,
     GENERATE,
-    EXPORT
+    EXPORT,
+    ACCESS_DENIED
 }

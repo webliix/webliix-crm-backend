@@ -4,6 +4,7 @@ import com.webliix.hr.worklog.dto.WorkLogRequest;
 import com.webliix.hr.worklog.dto.WorkLogResponse;
 import com.webliix.hr.worklog.dto.WorkLogReviewRequest;
 import com.webliix.hr.worklog.service.WorkLogService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,7 +12,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +28,7 @@ public class WorkLogController {
     // === EMPLOYEE SELF-SERVICE ROUTES ===
 
     @PostMapping("/employee/me/work-logs")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @RequirePermission("WORKLOGS_SUBMIT")
     public ResponseEntity<ApiResponse<WorkLogResponse>> submitWorkLog(
             @RequestBody WorkLogRequest request,
             Authentication auth) {
@@ -38,7 +38,7 @@ public class WorkLogController {
     }
 
     @PutMapping("/employee/me/work-logs/{id}")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @RequirePermission("WORKLOGS_SUBMIT")
     public ResponseEntity<ApiResponse<WorkLogResponse>> updateWorkLog(
             @PathVariable Long id,
             @RequestBody WorkLogRequest request,
@@ -49,7 +49,7 @@ public class WorkLogController {
     }
 
     @GetMapping("/employee/me/work-logs")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @RequirePermission(anyOf = {"WORKLOGS_SUBMIT", "WORKLOGS_VIEW"})
     public ResponseEntity<ApiResponse<Page<WorkLogResponse>>> getMyWorkLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -61,7 +61,7 @@ public class WorkLogController {
     }
 
     @GetMapping("/employee/me/work-logs/range")
-    @PreAuthorize("hasAnyAuthority('EMPLOYEE', 'ROLE_EMPLOYEE', 'SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @RequirePermission(anyOf = {"WORKLOGS_SUBMIT", "WORKLOGS_VIEW"})
     public ResponseEntity<ApiResponse<List<WorkLogResponse>>> getMyWorkLogsByRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
@@ -74,7 +74,7 @@ public class WorkLogController {
     // === ADMIN/MANAGER MANAGEMENT ROUTES ===
 
     @GetMapping("/work-logs")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'HR', 'ROLE_HR')")
+    @RequirePermission("WORKLOGS_VIEW")
     public ResponseEntity<ApiResponse<Page<WorkLogResponse>>> getAllWorkLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -85,7 +85,7 @@ public class WorkLogController {
     }
 
     @GetMapping("/work-logs/employee/{employeeId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'HR', 'ROLE_HR')")
+    @RequirePermission("WORKLOGS_VIEW")
     public ResponseEntity<ApiResponse<Page<WorkLogResponse>>> getWorkLogsByEmployee(
             @PathVariable Long employeeId,
             @RequestParam(defaultValue = "0") int page,
@@ -97,7 +97,7 @@ public class WorkLogController {
     }
 
     @GetMapping("/work-logs/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission("WORKLOGS_VIEW")
     public ResponseEntity<ApiResponse<WorkLogResponse>> getWorkLog(
             @PathVariable Long id,
             Authentication auth) {
@@ -107,7 +107,7 @@ public class WorkLogController {
     }
 
     @PatchMapping("/work-logs/{id}/review")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'HR', 'ROLE_HR')")
+    @RequirePermission("WORKLOGS_REVIEW")
     public ResponseEntity<ApiResponse<WorkLogResponse>> reviewWorkLog(
             @PathVariable Long id,
             @RequestBody WorkLogReviewRequest request,
@@ -118,7 +118,7 @@ public class WorkLogController {
     }
 
     @DeleteMapping("/work-logs/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission(anyOf = {"WORKLOGS_SUBMIT", "WORKLOGS_VIEW"})
     public ResponseEntity<ApiResponse<Void>> deleteWorkLog(
             @PathVariable Long id,
             Authentication auth) {

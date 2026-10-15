@@ -3,10 +3,10 @@ package com.webliix.marketing.controller;
 import com.webliix.marketing.dto.OfferRequest;
 import com.webliix.marketing.dto.OfferResponse;
 import com.webliix.marketing.service.OfferService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +23,7 @@ public class OfferController {
      * Returns offers. Clients/public get active offers; Staff can specify ?all=true to see all.
      */
     @GetMapping
+    @RequirePermission(anyOf = {"OFFERS_MANAGE", "CLIENT_PORTAL_ACCESS", "DASHBOARD_VIEW"})
     public ResponseEntity<ApiResponse<List<OfferResponse>>> getOffers(
             @RequestParam(defaultValue = "false") boolean all
     ) {
@@ -37,6 +38,7 @@ public class OfferController {
     }
 
     @GetMapping("/{id}")
+    @RequirePermission(anyOf = {"OFFERS_MANAGE", "CLIENT_PORTAL_ACCESS", "DASHBOARD_VIEW"})
     public ResponseEntity<ApiResponse<OfferResponse>> getOffer(@PathVariable Long id) {
         OfferResponse response = offerService.getOffer(id);
         return ResponseEntity.ok(ApiResponse.<OfferResponse>builder()
@@ -47,7 +49,7 @@ public class OfferController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("OFFERS_MANAGE")
     public ResponseEntity<ApiResponse<OfferResponse>> createOffer(@RequestBody OfferRequest request) {
         OfferResponse response = offerService.createOffer(request);
         return ResponseEntity.ok(ApiResponse.<OfferResponse>builder()
@@ -58,7 +60,7 @@ public class OfferController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("OFFERS_MANAGE")
     public ResponseEntity<ApiResponse<OfferResponse>> updateOffer(
             @PathVariable Long id,
             @RequestBody OfferRequest request
@@ -72,7 +74,7 @@ public class OfferController {
     }
 
     @PatchMapping("/{id}/toggle")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("OFFERS_MANAGE")
     public ResponseEntity<ApiResponse<OfferResponse>> toggleOffer(@PathVariable Long id) {
         OfferResponse response = offerService.toggleOffer(id);
         return ResponseEntity.ok(ApiResponse.<OfferResponse>builder()
@@ -83,7 +85,7 @@ public class OfferController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("OFFERS_MANAGE")
     public ResponseEntity<ApiResponse<Void>> deleteOffer(@PathVariable Long id) {
         offerService.deleteOffer(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()

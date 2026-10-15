@@ -53,6 +53,13 @@ public class Payment {
     @Column(columnDefinition = "TEXT")
     private String remarks;
 
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id", insertable = false, updatable = false)
+    private com.webliix.security.entity.User createdByUser;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

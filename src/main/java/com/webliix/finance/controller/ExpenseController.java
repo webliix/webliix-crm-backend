@@ -5,6 +5,7 @@ import com.webliix.finance.dto.ExpenseResponse;
 import com.webliix.finance.dto.ExpenseStatisticsResponse;
 import com.webliix.finance.enums.ExpenseCategory;
 import com.webliix.finance.service.ExpenseService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,7 +13,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('EXPENSES_CREATE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER', 'EMPLOYEE', 'ROLE_EMPLOYEE')")
+    @RequirePermission("EXPENSES_CREATE")
     public ResponseEntity<ApiResponse<ExpenseResponse>> createExpense(@RequestBody ExpenseRequest request) {
         ExpenseResponse response = expenseService.createExpense(request);
         return ResponseEntity.ok(ApiResponse.<ExpenseResponse>builder()
@@ -37,7 +37,7 @@ public class ExpenseController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission("EXPENSES_VIEW")
     public ResponseEntity<ApiResponse<Page<ExpenseResponse>>> getExpenses(
             @RequestParam(required = false) ExpenseCategory category,
             @RequestParam(required = false) String status,
@@ -57,7 +57,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission("EXPENSES_VIEW")
     public ResponseEntity<ApiResponse<ExpenseResponse>> getExpense(@PathVariable Long id) {
         ExpenseResponse response = expenseService.getExpense(id);
         return ResponseEntity.ok(ApiResponse.<ExpenseResponse>builder()
@@ -68,7 +68,7 @@ public class ExpenseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('EXPENSES_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission("EXPENSES_EDIT")
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateExpense(
             @PathVariable Long id,
             @RequestBody ExpenseRequest request
@@ -82,7 +82,7 @@ public class ExpenseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('EXPENSES_DELETE', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN')")
+    @RequirePermission("EXPENSES_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteExpense(@PathVariable Long id) {
         expenseService.deleteExpense(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -92,7 +92,7 @@ public class ExpenseController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyAuthority('EXPENSES_EDIT', 'SUPER_ADMIN', 'ROLE_SUPER_ADMIN', 'ADMIN', 'ROLE_ADMIN', 'MANAGER', 'ROLE_MANAGER')")
+    @RequirePermission(anyOf = {"EXPENSES_APPROVE", "EXPENSES_PAY"})
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> body
@@ -107,7 +107,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("isAuthenticated()")
+    @RequirePermission("EXPENSES_VIEW")
     public ResponseEntity<ApiResponse<ExpenseStatisticsResponse>> getStatistics() {
         ExpenseStatisticsResponse stats = expenseService.getExpenseStatistics();
         return ResponseEntity.ok(ApiResponse.<ExpenseStatisticsResponse>builder()

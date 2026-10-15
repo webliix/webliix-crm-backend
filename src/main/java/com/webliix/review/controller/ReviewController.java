@@ -3,6 +3,7 @@ package com.webliix.review.controller;
 import com.webliix.review.dto.CreateReviewRequest;
 import com.webliix.review.dto.ReviewDTO;
 import com.webliix.review.service.ReviewService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +12,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/reviews")
 @RequiredArgsConstructor
+@RequirePermission("REVIEWS_MANAGE")
 public class ReviewController {
 
     private final ReviewService reviewService;
@@ -36,7 +37,6 @@ public class ReviewController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('REPORTS_VIEW', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<ReviewDTO>> createReview(@Valid @RequestBody CreateReviewRequest request) {
         ReviewDTO response = reviewService.submitPublicReview(request);
         return ResponseEntity.ok(ApiResponse.<ReviewDTO>builder()
@@ -47,7 +47,6 @@ public class ReviewController {
     }
 
     @PutMapping("/{id}/toggle-approved")
-    @PreAuthorize("hasAnyAuthority('REPORTS_VIEW', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<ReviewDTO>> toggleApproved(@PathVariable Long id) {
         ReviewDTO response = reviewService.toggleApproved(id);
         return ResponseEntity.ok(ApiResponse.<ReviewDTO>builder()
@@ -58,7 +57,6 @@ public class ReviewController {
     }
 
     @PutMapping("/{id}/toggle-featured")
-    @PreAuthorize("hasAnyAuthority('REPORTS_VIEW', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<ReviewDTO>> toggleFeatured(@PathVariable Long id) {
         ReviewDTO response = reviewService.toggleFeatured(id);
         return ResponseEntity.ok(ApiResponse.<ReviewDTO>builder()
@@ -69,7 +67,6 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('REPORTS_VIEW', 'SUPER_ADMIN', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReview(@PathVariable Long id) {
         reviewService.deleteReview(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()

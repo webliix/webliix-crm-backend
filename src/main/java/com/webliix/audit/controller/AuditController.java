@@ -11,6 +11,7 @@ import com.webliix.audit.dto.AuditLogResponse;
 import com.webliix.audit.dto.AuditSearchRequest;
 import com.webliix.audit.dto.UserActivityResponse;
 import com.webliix.audit.service.AuditService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
+@RequirePermission("AUDIT_VIEW")
 public class AuditController {
 
     private final AuditService auditService;

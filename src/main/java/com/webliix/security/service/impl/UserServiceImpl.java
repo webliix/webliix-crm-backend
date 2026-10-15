@@ -7,9 +7,13 @@ import com.webliix.security.dto.UpdateAdminUserRequest;
 import com.webliix.security.dto.UserProfileResponse;
 import com.webliix.security.entity.Role;
 import com.webliix.security.entity.User;
+import com.webliix.security.model.WebliixPrincipal;
 import com.webliix.security.repository.RoleRepository;
 import com.webliix.security.repository.UserRepository;
+import com.webliix.security.service.CustomUserDetailsService;
+import com.webliix.security.service.UserPermissionCacheService;
 import com.webliix.security.service.UserService;
+import com.webliix.shared.exceptions.BusinessException;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,10 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,16 +37,12 @@ public class UserServiceImpl implements UserService {
     private final EmployeeRepository employeeRepository;
     private final com.webliix.crm.customer.repository.CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserPermissionCacheService userPermissionCacheService;
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Override
     public Page<UserProfileResponse> getAllUsers(String search, Pageable pageable) {
-        Page<User> users;
-        if (search != null && !search.isBlank()) {
-            String q = search.trim().toLowerCase();
-            users = userRepository.findAll(pageable); // In production can use specification filter
-        } else {
-            users = userRepository.findAll(pageable);
-        }
+        Page<User> users = userRepository.findAll(pageable);
         return users.map(this::mapToProfileResponse);
     }
 
@@ -57,20 +54,25 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User with email " + email + " already exists.");
         }
 
-        String rawRole = request.getRole() != null && !request.getRole().isBlank()
-                ? request.getRole().trim().toUpperCase()
-                : "EMPLOYEE";
-        if (rawRole.startsWith("ROLE_")) {
-            rawRole = rawRole.substring(5);
+        Set<Role> assignedRoles = new HashSet<>();
+        List<String> roleInput = request.getRoles() != null && !request.getRoles().isEmpty()
+                ? request.getRoles()
+                : (request.getRole() != null && !request.getRole().isBlank() ? List.of(request.getRole()) : List.of("EMPLOYEE"));
+
+        for (String rName : roleInput) {
+            String normalized = rName.trim().toUpperCase();
+            if (normalized.startsWith("ROLE_")) {
+                normalized = normalized.substring(5);
+            }
+            if ("CUSTOMER".equals(normalized) || "CLIENT".equals(normalized)) {
+                normalized = "USER";
+            }
+            final String lookupName = normalized;
+            Role role = roleRepository.findByName(lookupName)
+                    .or(() -> roleRepository.findByName("ROLE_" + lookupName))
+                    .orElseThrow(() -> new ResourceNotFoundException("Role " + lookupName + " not found"));
+            assignedRoles.add(role);
         }
-        if ("CUSTOMER".equals(rawRole) || "CLIENT".equals(rawRole)) {
-            rawRole = "USER";
-        }
-        final String normalizedRoleName = rawRole;
-        Role assignedRole = roleRepository.findByName(normalizedRoleName)
-                .or(() -> roleRepository.findByName("ROLE_" + normalizedRoleName))
-                .orElseGet(() -> roleRepository.findByName("EMPLOYEE")
-                        .orElseThrow(() -> new ResourceNotFoundException("Role " + normalizedRoleName + " not found")));
 
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -82,13 +84,15 @@ public class UserServiceImpl implements UserService {
                 .department(request.getDepartment())
                 .enabled(true)
                 .emailVerified(true)
+                .tokenVersion(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .roles(new HashSet<>(Set.of(assignedRole)))
+                .roles(assignedRoles)
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("Super Admin created new user account: ID {}, Email {}, Role {}", saved.getId(), saved.getEmail(), assignedRole.getName());
+        log.info("Created new user account: ID {}, Email {}, Roles {}", saved.getId(), saved.getEmail(),
+                assignedRoles.stream().map(Role::getName).collect(Collectors.joining(",")));
         return mapToProfileResponse(saved);
     }
 
@@ -107,26 +111,36 @@ public class UserServiceImpl implements UserService {
         if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
         if (request.getEmailVerified() != null) user.setEmailVerified(request.getEmailVerified());
 
-        if (request.getRole() != null && !request.getRole().isBlank()) {
-            String roleName = request.getRole().trim().toUpperCase();
-            if (roleName.startsWith("ROLE_")) {
-                roleName = roleName.substring(5);
+        List<String> roleInput = request.getRoles() != null && !request.getRoles().isEmpty()
+                ? request.getRoles()
+                : (request.getRole() != null && !request.getRole().isBlank() ? List.of(request.getRole()) : null);
+
+        if (roleInput != null) {
+            Set<Role> updatedRoles = new HashSet<>();
+            for (String rName : roleInput) {
+                String normalized = rName.trim().toUpperCase();
+                if (normalized.startsWith("ROLE_")) {
+                    normalized = normalized.substring(5);
+                }
+                if ("CUSTOMER".equals(normalized) || "CLIENT".equals(normalized)) {
+                    normalized = "USER";
+                }
+                final String lookupName = normalized;
+                Role role = roleRepository.findByName(lookupName)
+                        .or(() -> roleRepository.findByName("ROLE_" + lookupName))
+                        .orElseThrow(() -> new ResourceNotFoundException("Role " + lookupName + " not found"));
+                updatedRoles.add(role);
             }
-            if ("CUSTOMER".equals(roleName) || "CLIENT".equals(roleName)) {
-                roleName = "USER";
-            }
-            final String normalizedRole = roleName;
-            Role assignedRole = roleRepository.findByName(normalizedRole)
-                    .or(() -> roleRepository.findByName("ROLE_" + normalizedRole))
-                    .orElseThrow(() -> new ResourceNotFoundException("Role " + normalizedRole + " not found"));
-            user.setRoles(new HashSet<>(Set.of(assignedRole)));
-        } else if (user.getRoles() != null) {
-            // Ensure roles collection is a mutable set to avoid Hibernate UnsupportedOperationException
-            user.setRoles(new HashSet<>(user.getRoles()));
+            user.setRoles(updatedRoles);
         }
 
+        int currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        user.setTokenVersion(currentVersion + 1);
         user.setUpdatedAt(LocalDateTime.now());
         User updated = userRepository.save(user);
+
+        // Invalidate permissions cache
+        userPermissionCacheService.evict(id);
 
         // Keep linked Employee record in sync if exists
         try {
@@ -165,7 +179,7 @@ public class UserServiceImpl implements UserService {
             log.warn("Failed to sync customer record for user email {}: {}", user.getEmail(), e.getMessage());
         }
 
-        log.info("User ID {} updated by Super Admin", id);
+        log.info("User ID {} updated. Token version bumped to {}", id, user.getTokenVersion());
         return mapToProfileResponse(updated);
     }
 
@@ -178,13 +192,17 @@ public class UserServiceImpl implements UserService {
         // Prevent deletion of bootstrap super admin
         boolean isSuperAdmin = user.getRoles() != null && user.getRoles().stream()
                 .filter(Objects::nonNull)
-                .anyMatch(r -> "SUPER_ADMIN".equalsIgnoreCase(r.getName()));
-        if (isSuperAdmin && userRepository.count() == 1) {
-            throw new IllegalArgumentException("Cannot delete the last Super Admin account.");
+                .anyMatch(r -> Boolean.TRUE.equals(r.getIsSuperAdmin()) || "SUPER_ADMIN".equalsIgnoreCase(r.getName()));
+        if (isSuperAdmin) {
+            long superAdminCount = userRepository.countActiveSuperAdmins();
+            if (superAdminCount <= 1) {
+                throw new BusinessException("Cannot delete the last active Super Admin account.");
+            }
         }
 
+        userPermissionCacheService.evict(id);
         userRepository.delete(user);
-        log.info("User ID {} deleted by Super Admin", id);
+        log.info("User ID {} deleted", id);
     }
 
     @Override
@@ -207,26 +225,16 @@ public class UserServiceImpl implements UserService {
                 : Set.of("USER");
 
         Set<String> permissions = new HashSet<>();
-        if (roleNames.contains("SUPER_ADMIN")) {
-            permissions.addAll(Set.of(
-                "DASHBOARD_VIEW", "LEADS_VIEW", "LEADS_CREATE", "LEADS_EDIT", "LEADS_DELETE", "LEADS_CONVERT",
-                "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_EDIT", "CLIENTS_DELETE",
-                "BLOGS_VIEW", "BLOGS_CREATE", "BLOGS_EDIT", "BLOGS_DELETE",
-                "PROJECTS_VIEW", "PROJECTS_CREATE", "PROJECTS_EDIT", "PROJECTS_DELETE",
-                "TICKETS_VIEW", "TICKETS_CREATE", "TICKETS_EDIT", "TICKETS_DELETE",
-                "USERS_MANAGE", "USERS_DELETE", "NOTIFICATIONS_BROADCAST", "REPORTS_VIEW", "SETTINGS_VIEW"
-            ));
-        } else if (roleNames.contains("ADMIN")) {
-            permissions.addAll(Set.of(
-                "DASHBOARD_VIEW", "LEADS_VIEW", "LEADS_CREATE", "LEADS_EDIT", "LEADS_CONVERT",
-                "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_EDIT",
-                "BLOGS_VIEW", "BLOGS_CREATE", "BLOGS_EDIT",
-                "PROJECTS_VIEW", "PROJECTS_CREATE", "PROJECTS_EDIT",
-                "TICKETS_VIEW", "TICKETS_CREATE", "TICKETS_EDIT",
-                "USERS_MANAGE", "NOTIFICATIONS_BROADCAST", "REPORTS_VIEW"
-            ));
-        } else {
-            permissions.addAll(Set.of("DASHBOARD_VIEW", "PROJECTS_VIEW", "TICKETS_VIEW", "PUBLIC_UPDATES_VIEW"));
+        try {
+            var principal = (WebliixPrincipal) customUserDetailsService.loadUserByUsername(user.getEmail());
+            if (principal.isSuperAdmin()) {
+                permissions.add("*");
+            }
+            if (principal.getPermissions() != null) {
+                permissions.addAll(principal.getPermissions().keySet());
+            }
+        } catch (Exception ex) {
+            log.debug("Unable to compute principal permissions for user {}: {}", user.getEmail(), ex.getMessage());
         }
 
         return UserProfileResponse.builder()

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,7 +18,8 @@ public class UpdateAdminUserRequest {
     private String jobTitle;
     private String department;
     private String bio;
-    private String role;
+    private String role; // Backward compatible single role
+    private List<String> roles; // Multi-role support
     private Boolean enabled;
     private Boolean emailVerified;
 }

@@ -4,6 +4,7 @@ import com.webliix.crm.lead.dto.CreateLeadRequest;
 import com.webliix.crm.lead.dto.LeadResponse;
 import com.webliix.crm.lead.service.LeadConversionService;
 import com.webliix.crm.lead.service.LeadService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ public class LeadController {
     private final LeadConversionService leadConversionService;
 
     @PostMapping
+    @RequirePermission("LEADS_CREATE")
     public ResponseEntity<ApiResponse<LeadResponse>> createLead(@RequestBody CreateLeadRequest request) {
         LeadResponse res = leadService.createLead(request);
         return ResponseEntity.ok(ApiResponse.<LeadResponse>builder()
@@ -31,6 +33,7 @@ public class LeadController {
     }
 
     @GetMapping
+    @RequirePermission("LEADS_VIEW")
     public ResponseEntity<ApiResponse<Page<LeadResponse>>> getAllLeads(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -45,6 +48,7 @@ public class LeadController {
     }
 
     @GetMapping("/search")
+    @RequirePermission("LEADS_VIEW")
     public ResponseEntity<ApiResponse<Page<LeadResponse>>> searchLeads(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -60,6 +64,7 @@ public class LeadController {
     }
 
     @GetMapping("/{id}")
+    @RequirePermission("LEADS_VIEW")
     public ResponseEntity<ApiResponse<LeadResponse>> getLead(@PathVariable Long id) {
         LeadResponse res = leadService.getLead(id);
         return ResponseEntity.ok(ApiResponse.<LeadResponse>builder()
@@ -70,6 +75,7 @@ public class LeadController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("LEADS_EDIT")
     public ResponseEntity<ApiResponse<LeadResponse>> updateLead(@PathVariable Long id, @RequestBody CreateLeadRequest request) {
         LeadResponse res = leadService.updateLead(id, request);
         return ResponseEntity.ok(ApiResponse.<LeadResponse>builder()
@@ -80,6 +86,7 @@ public class LeadController {
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("LEADS_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteLead(@PathVariable Long id) {
         leadService.deleteLead(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -89,6 +96,7 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/convert")
+    @RequirePermission("LEADS_CONVERT")
     public ResponseEntity<ApiResponse<Void>> convertLead(
             @PathVariable Long id,
             @RequestBody(required = false) com.webliix.crm.lead.dto.ConvertLeadRequest request
@@ -98,6 +106,20 @@ public class LeadController {
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
                 .message("Lead converted successfully")
+                .build());
+    }
+
+    @PostMapping("/{id}/assign")
+    @RequirePermission("LEADS_ASSIGN")
+    public ResponseEntity<ApiResponse<LeadResponse>> assignLead(
+            @PathVariable Long id,
+            @RequestParam Long assignedTo
+    ) {
+        LeadResponse res = leadService.assignLead(id, assignedTo);
+        return ResponseEntity.ok(ApiResponse.<LeadResponse>builder()
+                .success(true)
+                .message("Lead assigned successfully")
+                .data(res)
                 .build());
     }
 }

@@ -1,6 +1,12 @@
 Neon db-webliiix:
 postgresql://neondb_owner:npg_yVCAv8LaHw5x@ep-old-feather-azfnag8s-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
+
+neon db hhimanshusharmawwlk@gmail.com
+postgresql://neondb_owner:npg_n0zm9PGivJAa@ep-silent-sun-a124ynbq-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+
+
 Redis
 UPSTASH_REDIS_REST_URL="https://boss-baboon-279801.upstash.io"
 UPSTASH_REDIS_REST_TOKEN="gQAAAAAABET5AAIgcDJhZDg2NzQ2ODAzYmI0YWQyYjY0ZDQ4NThkMWRmYjlmZQ"

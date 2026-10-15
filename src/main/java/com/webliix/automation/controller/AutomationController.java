@@ -3,6 +3,7 @@ package com.webliix.automation.controller;
 import com.webliix.automation.dto.*;
 import com.webliix.automation.enums.TriggerType;
 import com.webliix.automation.service.AutomationService;
+import com.webliix.security.annotation.RequirePermission;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/automation")
+@RequirePermission("AUTOMATION_MANAGE")
 public class AutomationController {
 
     private final AutomationService automationService;

@@ -59,6 +59,13 @@ public class Expense {
     @Column(name = "created_by")
     private String createdBy;
 
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id", insertable = false, updatable = false)
+    private com.webliix.security.entity.User createdByUser;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

@@ -58,6 +58,19 @@ public class Lead {
 
     private String notes;
 
+    @Column(name = "assigned_to")
+    private Long assignedTo;
+
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
+
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to", insertable = false, updatable = false)
+    private com.webliix.security.entity.User assignedToUser;
+
     private Boolean converted;
 
     @Column(name = "converted_at")

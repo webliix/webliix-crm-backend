@@ -11,11 +11,13 @@ import com.webliix.hr.leave.enums.LeaveStatus;
 import com.webliix.hr.leave.repository.LeaveBalanceRepository;
 import com.webliix.hr.leave.repository.LeaveRequestRepository;
 import com.webliix.hr.leave.service.LeaveService;
+import com.webliix.security.scoping.DataScopeService;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -29,6 +31,7 @@ public class LeaveServiceImpl implements LeaveService {
     private final LeaveRequestRepository leaveRequestRepository;
     private final LeaveBalanceRepository leaveBalanceRepository;
     private final EmployeeRepository employeeRepository;
+    private final DataScopeService dataScopeService;
 
     @Override
     public LeaveResponse applyLeave(LeaveRequestDto request) {
@@ -67,6 +70,13 @@ public class LeaveServiceImpl implements LeaveService {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found with id: " + id));
 
+        Long currentUserId = dataScopeService.getCurrentUserId();
+        if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null && currentUserId != null) {
+            if (leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
+                throw new AccessDeniedException("Maker-checker violation: You cannot approve your own leave request.");
+            }
+        }
+
         if (!LeaveStatus.PENDING.equals(leaveRequest.getStatus())) {
             throw new IllegalStateException("Leave request is not pending and cannot be approved");
         }
@@ -88,7 +98,7 @@ public class LeaveServiceImpl implements LeaveService {
         leaveBalanceRepository.save(balance);
 
         leaveRequest.setStatus(LeaveStatus.APPROVED);
-        leaveRequest.setApprovedBy("System");
+        leaveRequest.setApprovedBy(currentUserId != null ? currentUserId.toString() : "System");
         leaveRequest.setApprovedAt(LocalDateTime.now());
         leaveRequest.setUpdatedAt(LocalDateTime.now());
 
@@ -100,8 +110,15 @@ public class LeaveServiceImpl implements LeaveService {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found with id: " + id));
 
+        Long currentUserId = dataScopeService.getCurrentUserId();
+        if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null && currentUserId != null) {
+            if (leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
+                throw new AccessDeniedException("Maker-checker violation: You cannot reject your own leave request.");
+            }
+        }
+
         leaveRequest.setStatus(LeaveStatus.REJECTED);
-        leaveRequest.setApprovedBy("System");
+        leaveRequest.setApprovedBy(currentUserId != null ? currentUserId.toString() : "System");
         leaveRequest.setApprovedAt(LocalDateTime.now());
         leaveRequest.setUpdatedAt(LocalDateTime.now());
 

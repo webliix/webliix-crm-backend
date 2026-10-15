@@ -25,6 +25,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final com.webliix.audit.filter.AuditHttpFilter auditHttpFilter;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
 
@@ -53,6 +54,9 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/api/v1/**").authenticated()
                 .anyRequest().permitAll()
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .accessDeniedHandler(customAccessDeniedHandler)
             )
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

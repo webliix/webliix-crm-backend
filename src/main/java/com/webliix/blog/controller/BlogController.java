@@ -6,6 +6,7 @@ import com.webliix.blog.enums.BlogPostStatus;
 import com.webliix.blog.enums.BlogResourceType;
 import com.webliix.blog.service.BlogMediaService;
 import com.webliix.blog.service.BlogService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/blogs")
 @RequiredArgsConstructor
+@RequirePermission("BLOGS_MANAGE")
 public class BlogController {
 
     private final BlogService blogService;

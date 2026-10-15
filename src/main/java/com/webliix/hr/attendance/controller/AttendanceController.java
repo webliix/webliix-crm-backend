@@ -3,6 +3,7 @@ package com.webliix.hr.attendance.controller;
 import com.webliix.hr.attendance.dto.AttendanceRequest;
 import com.webliix.hr.attendance.dto.AttendanceResponse;
 import com.webliix.hr.attendance.service.AttendanceService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,12 +20,14 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/attendance")
+    @RequirePermission("ATTENDANCE_MANAGE")
     public ResponseEntity<ApiResponse<AttendanceResponse>> recordAttendance(@RequestBody AttendanceRequest request) {
         AttendanceResponse response = attendanceService.recordAttendance(request);
         return ResponseEntity.ok(ApiResponse.<AttendanceResponse>builder().success(true).message("Attendance recorded successfully").data(response).build());
     }
 
     @GetMapping("/attendance")
+    @RequirePermission("ATTENDANCE_VIEW")
     public ResponseEntity<ApiResponse<Page<AttendanceResponse>>> getAttendance(@RequestParam(defaultValue = "0") int page,
                                                                                 @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -33,6 +36,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/employees/{employeeId}/attendance")
+    @RequirePermission("ATTENDANCE_VIEW")
     public ResponseEntity<ApiResponse<Page<AttendanceResponse>>> getEmployeeAttendance(@PathVariable Long employeeId,
                                                                                        @RequestParam(defaultValue = "0") int page,
                                                                                        @RequestParam(defaultValue = "20") int size) {

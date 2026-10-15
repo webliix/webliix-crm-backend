@@ -3,29 +3,34 @@ package com.webliix.security.service;
 import com.webliix.audit.entity.AuditAction;
 import com.webliix.audit.entity.AuditModule;
 import com.webliix.audit.service.AuditService;
+import com.webliix.crm.customer.repository.CustomerRepository;
+import com.webliix.hr.employee.repository.EmployeeRepository;
 import com.webliix.notifications.service.EmailService;
 import com.webliix.security.dto.*;
+import com.webliix.security.entity.MenuItem;
+import com.webliix.security.entity.Permission;
 import com.webliix.security.entity.Role;
+import com.webliix.security.entity.ScopeType;
 import com.webliix.security.entity.User;
 import com.webliix.security.jwt.JwtService;
+import com.webliix.security.model.WebliixPrincipal;
+import com.webliix.security.repository.MenuItemRepository;
+import com.webliix.security.repository.PermissionRepository;
 import com.webliix.security.repository.RoleRepository;
 import com.webliix.security.repository.UserRepository;
+import com.webliix.shared.exceptions.BusinessException;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import com.webliix.crm.customer.repository.CustomerRepository;
-import com.webliix.hr.employee.repository.EmployeeRepository;
-import com.webliix.shared.exceptions.BusinessException;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +42,8 @@ public class AuthService {
     private final CustomerRepository customerRepository;
     private final EmployeeRepository employeeRepository;
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final MenuItemRepository menuItemRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
@@ -44,6 +51,7 @@ public class AuthService {
     private final OtpService otpService;
     private final RateLimiterService rateLimiterService;
     private final EmailService emailService;
+    private final UserPermissionCacheService userPermissionCacheService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -51,13 +59,14 @@ public class AuthService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        Role assignedRole = userRepository.count() == 0
-                ? roleRepository.findByName("SUPER_ADMIN")
-                .orElseThrow(() -> new ResourceNotFoundException("Role SUPER_ADMIN not found"))
-                : roleRepository.findByName("EMPLOYEE")
-                .orElseThrow(() -> new ResourceNotFoundException("Role EMPLOYEE not found"));
+        long userCount = userRepository.count();
+        // Allow ONLY the initial bootstrap super admin account; afterwards disable public registration
+        if (userCount > 0) {
+            throw new BusinessException("Public registration is disabled. Internal accounts must be created by an administrator.");
+        }
 
-        boolean isSuperAdmin = "SUPER_ADMIN".equals(assignedRole.getName());
+        Role superAdminRole = roleRepository.findByName("SUPER_ADMIN")
+                .orElseThrow(() -> new ResourceNotFoundException("Role SUPER_ADMIN not found"));
 
         User user = User.builder()
                 .firstName(request.getFirstName())
@@ -66,23 +75,15 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
                 .enabled(true)
-                .emailVerified(isSuperAdmin) // Auto-verify initial bootstrap admin
+                .emailVerified(true) // Initial bootstrap admin is pre-verified
+                .tokenVersion(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .roles(Set.of(assignedRole))
+                .roles(Set.of(superAdminRole))
                 .build();
 
         userRepository.save(user);
-
-        // Generate and dispatch Email Verification OTP if not super admin
-        if (!isSuperAdmin) {
-            try {
-                String otp = otpService.generateAndStoreOtp(OtpService.PREFIX_EMAIL_VERIFICATION, user.getEmail());
-                emailService.sendVerificationOtpEmail(user.getEmail(), user.getFirstName(), otp, 5);
-            } catch (Exception e) {
-                log.error("Failed to send email verification OTP during registration: {}", e.getMessage());
-            }
-        }
+        log.info("Bootstrapped initial SUPER_ADMIN account: {}", user.getEmail());
 
         var userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtService.generateToken(userDetails);
@@ -105,6 +106,42 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             auditService.record(AuditAction.LOGIN, AuditModule.AUTH, null, null, null, null, "FAILED", httpRequest);
             throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            auditService.record(AuditAction.LOGIN, AuditModule.AUTH, null, null, null, null, "DISABLED_ACCOUNT", httpRequest);
+            throw new BusinessException("Account is disabled. Please contact your administrator.");
+        }
+
+        if (Boolean.FALSE.equals(user.getEmailVerified())) {
+            auditService.record(AuditAction.LOGIN, AuditModule.AUTH, null, null, null, null, "UNVERIFIED_EMAIL", httpRequest);
+            throw new BusinessException("Email not verified. Please verify your email before logging in.");
+        }
+
+        Set<String> roleNames = user.getRoles() != null
+                ? user.getRoles().stream().map(r -> r.getName().toUpperCase()).collect(Collectors.toSet())
+                : Collections.emptySet();
+
+        boolean isSuperAdmin = roleNames.contains("SUPER_ADMIN") || user.getRoles().stream().anyMatch(r -> Boolean.TRUE.equals(r.getIsSuperAdmin()));
+        boolean hasCrmAdminRole = isSuperAdmin
+                || roleNames.contains("ADMIN")
+                || roleNames.contains("MANAGER")
+                || roleNames.contains("HR")
+                || roleNames.contains("ACCOUNTS")
+                || roleNames.contains("SALES")
+                || roleNames.contains("SUPPORT")
+                || roleNames.contains("MARKETING");
+
+        // Enforce employee portal login: users with ONLY employee status cannot log into administrative portals
+        boolean isPureEmployee = roleNames.contains("EMPLOYEE") && !hasCrmAdminRole;
+        if (isPureEmployee) {
+            String portalHeader = httpRequest != null ? httpRequest.getHeader("X-Portal") : null;
+            String portalReq = request.getPortal();
+            boolean isFromEmployeePortal = "EMPLOYEE".equalsIgnoreCase(portalHeader) || "EMPLOYEE".equalsIgnoreCase(portalReq);
+            if (!isFromEmployeePortal) {
+                auditService.record(AuditAction.LOGIN, AuditModule.AUTH, null, null, null, null, "EMPLOYEE_PORTAL_REQUIRED", httpRequest);
+                throw new AccessDeniedException("Access denied: Employee accounts must log in through the Employee Portal.");
+            }
         }
 
         var userDetails = userDetailsService.loadUserByUsername(user.getEmail());
@@ -167,14 +204,12 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email).orElse(null);
 
-        // If not directly in users table, check if registered as customer in Webliix DB
         if (user == null) {
             var customerOpt = customerRepository.findByEmail(email);
             if (customerOpt.isPresent()) {
                 var customer = customerOpt.get();
                 Role clientRole = roleRepository.findByName("USER")
                         .or(() -> roleRepository.findByName("CLIENT"))
-                        .or(() -> roleRepository.findByName("EMPLOYEE"))
                         .orElseThrow(() -> new ResourceNotFoundException("Client role not configured"));
                 user = User.builder()
                         .firstName(customer.getContactPerson() != null && !customer.getContactPerson().isBlank() ? customer.getContactPerson() : customer.getCompanyName())
@@ -193,7 +228,6 @@ public class AuthService {
             }
         }
 
-        // If not in customers, check if registered as employee in Webliix DB
         if (user == null) {
             var employeeOpt = employeeRepository.findByEmail(email);
             if (employeeOpt.isPresent()) {
@@ -219,7 +253,6 @@ public class AuthService {
             }
         }
 
-        // If not found in any Webliix DB entity, reject with User not found
         if (user == null) {
             throw new ResourceNotFoundException("User not found with this email address");
         }
@@ -270,13 +303,14 @@ public class AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        int currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        user.setTokenVersion(currentVersion + 1);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Single-use: Clear reset token
+        userPermissionCacheService.evict(user.getId());
         otpService.clearResetToken(email);
 
-        // Send confirmation email
         try {
             emailService.sendPasswordResetSuccessEmail(user.getEmail(), user.getFirstName());
         } catch (Exception e) {
@@ -293,7 +327,18 @@ public class AuthService {
                 ? user.getRoles().stream().map(Role::getName).collect(Collectors.toSet())
                 : Collections.emptySet();
 
-        Set<String> permissions = resolvePermissionsForRoles(roleNames);
+        Set<String> permissions = new HashSet<>();
+        try {
+            var principal = (WebliixPrincipal) userDetailsService.loadUserByUsername(email);
+            if (principal.isSuperAdmin()) {
+                permissions.add("*");
+            }
+            if (principal.getPermissions() != null) {
+                permissions.addAll(principal.getPermissions().keySet());
+            }
+        } catch (Exception ex) {
+            log.debug("Unable to compute principal permissions: {}", ex.getMessage());
+        }
 
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -301,11 +346,11 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .jobTitle(user.getJobTitle() != null ? user.getJobTitle() : "Lead Architecture Director")
-                .department(user.getDepartment() != null ? user.getDepartment() : "Engineering & Product")
-                .bio(user.getBio() != null ? user.getBio() : "Architecting high-speed enterprise CRM solutions, multi-tenant microservices, and AI workflow tools for Webliix SaaS platform.")
-                .timezone(user.getTimezone() != null ? user.getTimezone() : "Asia/Kolkata")
-                .language(user.getLanguage() != null ? user.getLanguage() : "en-US")
+                .jobTitle(user.getJobTitle())
+                .department(user.getDepartment())
+                .bio(user.getBio())
+                .timezone(user.getTimezone())
+                .language(user.getLanguage())
                 .twoFactorEnabled(user.getTwoFactorEnabled() != null ? user.getTwoFactorEnabled() : false)
                 .enabled(user.getEnabled())
                 .emailVerified(user.getEmailVerified() != null ? user.getEmailVerified() : false)
@@ -316,63 +361,104 @@ public class AuthService {
                 .build();
     }
 
-    private Set<String> resolvePermissionsForRoles(Set<String> roles) {
-        if (roles.contains("SUPER_ADMIN")) {
-            return Set.of(
-                "*",
-                "DASHBOARD_VIEW",
-                "LEADS_VIEW", "LEADS_CREATE", "LEADS_EDIT", "LEADS_DELETE", "LEADS_CONVERT",
-                "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_EDIT", "CLIENTS_DELETE",
-                "PROJECTS_VIEW", "PROJECTS_CREATE", "PROJECTS_EDIT", "PROJECTS_DELETE",
-                "TICKETS_VIEW", "TICKETS_CREATE", "TICKETS_EDIT", "TICKETS_DELETE",
-                "INVOICES_VIEW", "INVOICES_CREATE", "INVOICES_EDIT", "INVOICES_DELETE",
-                "REPORTS_VIEW", "SETTINGS_VIEW", "HR_VIEW", "EXPENSES_VIEW", "AUDIT_VIEW"
-            );
+    @Transactional(readOnly = true)
+    public AuthMeResponse getAuthMe(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AccessDeniedException("Unauthenticated");
         }
 
-        Set<String> perms = new HashSet<>();
-        perms.add("DASHBOARD_VIEW");
+        String email = auth.getName();
+        WebliixPrincipal principal = (WebliixPrincipal) userDetailsService.loadUserByUsername(email);
+        UserProfileResponse userProfile = getCurrentUser(email);
 
-        if (roles.contains("ADMIN")) {
-            perms.addAll(Set.of(
-                "LEADS_VIEW", "LEADS_CREATE", "LEADS_EDIT", "LEADS_DELETE", "LEADS_CONVERT",
-                "CLIENTS_VIEW", "CLIENTS_CREATE", "CLIENTS_EDIT", "CLIENTS_DELETE",
-                "PROJECTS_VIEW", "PROJECTS_CREATE", "PROJECTS_EDIT", "PROJECTS_DELETE",
-                "TICKETS_VIEW", "TICKETS_CREATE", "TICKETS_EDIT", "TICKETS_DELETE",
-                "INVOICES_VIEW", "INVOICES_CREATE", "INVOICES_EDIT", "INVOICES_DELETE",
-                "REPORTS_VIEW", "HR_VIEW", "EXPENSES_VIEW"
-            ));
+        List<UserPermissionItemDto> permList = new ArrayList<>();
+        if (principal.isSuperAdmin()) {
+            List<Permission> allPerms = permissionRepository.findAll();
+            for (Permission p : allPerms) {
+                permList.add(new UserPermissionItemDto(p.getCode(), ScopeType.ALL));
+            }
+        } else if (principal.getPermissions() != null) {
+            for (Map.Entry<String, ScopeType> entry : principal.getPermissions().entrySet()) {
+                permList.add(new UserPermissionItemDto(entry.getKey(), entry.getValue()));
+            }
         }
 
-        if (roles.contains("MANAGER")) {
-            perms.addAll(Set.of(
-                "LEADS_VIEW", "LEADS_CREATE", "LEADS_EDIT", "LEADS_CONVERT",
-                "CLIENTS_VIEW", "PROJECTS_VIEW", "PROJECTS_CREATE", "PROJECTS_EDIT",
-                "TICKETS_VIEW", "TICKETS_CREATE", "TICKETS_EDIT",
-                "INVOICES_VIEW", "REPORTS_VIEW"
-            ));
+        // Build server-driven navigation menu based on user permissions
+        List<MenuItem> allMenuItems = menuItemRepository.findByActiveTrueOrderBySortOrderAsc();
+        List<MenuItem> authorizedItems = allMenuItems.stream()
+                .filter(item -> {
+                    if (principal.isSuperAdmin()) {
+                        return true;
+                    }
+                    if (item.getRequiredPermission() == null || item.getRequiredPermission().isBlank()) {
+                        return true;
+                    }
+                    return principal.hasPermission(item.getRequiredPermission());
+                })
+                .collect(Collectors.toList());
+
+        Map<String, NavigationItemDto> itemMap = new LinkedHashMap<>();
+        for (MenuItem mi : authorizedItems) {
+            NavigationItemDto dto = NavigationItemDto.builder()
+                    .key(mi.getKey())
+                    .label(mi.getLabel())
+                    .path(mi.getPath())
+                    .icon(mi.getIcon())
+                    .module(mi.getModule())
+                    .requiredPermission(mi.getRequiredPermission())
+                    .sortOrder(mi.getSortOrder())
+                    .parentKey(mi.getParentKey())
+                    .children(new ArrayList<>())
+                    .build();
+            itemMap.put(mi.getKey(), dto);
         }
 
-        if (roles.contains("EMPLOYEE")) {
-            perms.addAll(Set.of(
-                "LEADS_VIEW", "CLIENTS_VIEW", "PROJECTS_VIEW", "TICKETS_VIEW"
-            ));
+        List<NavigationItemDto> rootNavigation = new ArrayList<>();
+        for (NavigationItemDto dto : itemMap.values()) {
+            if (dto.getParentKey() != null && !dto.getParentKey().isBlank() && itemMap.containsKey(dto.getParentKey())) {
+                itemMap.get(dto.getParentKey()).getChildren().add(dto);
+            } else {
+                rootNavigation.add(dto);
+            }
         }
 
-        if (roles.contains("HR")) {
-            perms.addAll(Set.of(
-                "HR_VIEW", "HR_MANAGE", "EMPLOYEES_VIEW", "EMPLOYEES_MANAGE", "ATTENDANCE_VIEW", "PAYROLL_VIEW", "LEAVE_VIEW"
-            ));
+        List<String> portalAccess = new ArrayList<>();
+        if (principal.isSuperAdmin()) {
+            portalAccess.addAll(List.of("CRM", "EMPLOYEE", "CLIENT", "ADMIN"));
+        } else {
+            if (principal.hasPermission("DASHBOARD_VIEW")) {
+                portalAccess.add("CRM");
+            }
+            if (principal.hasPermission("EMPLOYEE_PORTAL_ACCESS") || principal.getRoles().contains("EMPLOYEE")) {
+                portalAccess.add("EMPLOYEE");
+            }
+            if (principal.hasPermission("CLIENT_PORTAL_ACCESS") || principal.getRoles().contains("CLIENT") || principal.getRoles().contains("USER")) {
+                portalAccess.add("CLIENT");
+            }
         }
 
-        if (roles.contains("USER") || roles.contains("CLIENT") || roles.contains("ROLE_CLIENT")) {
-            perms.addAll(Set.of(
-                "PROJECTS_VIEW", "INVOICES_VIEW", "TICKETS_VIEW", "TICKETS_CREATE",
-                "CUSTOMER_PROJECTS_VIEW", "CUSTOMER_NOTIFICATIONS_VIEW", "PUBLIC_UPDATES_VIEW"
-            ));
-        }
-
-        return perms;
+        return AuthMeResponse.builder()
+                .id(userProfile.getId())
+                .firstName(userProfile.getFirstName())
+                .lastName(userProfile.getLastName())
+                .email(userProfile.getEmail())
+                .phone(userProfile.getPhone())
+                .jobTitle(userProfile.getJobTitle())
+                .department(userProfile.getDepartment())
+                .bio(userProfile.getBio())
+                .timezone(userProfile.getTimezone())
+                .language(userProfile.getLanguage())
+                .twoFactorEnabled(userProfile.getTwoFactorEnabled())
+                .enabled(userProfile.getEnabled())
+                .emailVerified(userProfile.getEmailVerified())
+                .createdAt(userProfile.getCreatedAt())
+                .updatedAt(userProfile.getUpdatedAt())
+                .user(userProfile)
+                .roles(principal.getRoles())
+                .permissions(permList)
+                .navigation(rootNavigation)
+                .portalAccess(portalAccess)
+                .build();
     }
 
     @Transactional
@@ -380,33 +466,16 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
 
-        if (request.getFirstName() != null) {
-            user.setFirstName(request.getFirstName().trim());
-        }
-        if (request.getLastName() != null) {
-            user.setLastName(request.getLastName().trim());
-        }
-        if (request.getPhone() != null) {
-            user.setPhone(request.getPhone().trim());
-        }
-        if (request.getJobTitle() != null) {
-            user.setJobTitle(request.getJobTitle().trim());
-        }
-        if (request.getDepartment() != null) {
-            user.setDepartment(request.getDepartment().trim());
-        }
-        if (request.getBio() != null) {
-            user.setBio(request.getBio().trim());
-        }
-        if (request.getTimezone() != null) {
-            user.setTimezone(request.getTimezone().trim());
-        }
-        if (request.getLanguage() != null) {
-            user.setLanguage(request.getLanguage().trim());
-        }
-        if (request.getTwoFactorEnabled() != null) {
-            user.setTwoFactorEnabled(request.getTwoFactorEnabled());
-        }
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName().trim());
+        if (request.getLastName() != null) user.setLastName(request.getLastName().trim());
+        if (request.getPhone() != null) user.setPhone(request.getPhone().trim());
+        if (request.getJobTitle() != null) user.setJobTitle(request.getJobTitle().trim());
+        if (request.getDepartment() != null) user.setDepartment(request.getDepartment().trim());
+        if (request.getBio() != null) user.setBio(request.getBio().trim());
+        if (request.getTimezone() != null) user.setTimezone(request.getTimezone().trim());
+        if (request.getLanguage() != null) user.setLanguage(request.getLanguage().trim());
+        if (request.getTwoFactorEnabled() != null) user.setTwoFactorEnabled(request.getTwoFactorEnabled());
+
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -427,7 +496,12 @@ public class AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        int currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
+        user.setTokenVersion(currentVersion + 1);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        userPermissionCacheService.evict(user.getId());
+        log.info("Password changed and token_version bumped to {} for user {}", user.getTokenVersion(), email);
     }
 }

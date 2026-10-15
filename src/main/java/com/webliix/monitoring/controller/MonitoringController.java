@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.webliix.monitoring.repository.TenantMetricsRepository;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import com.webliix.tenant.repository.TenantRepository;
 
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/monitoring")
 @RequiredArgsConstructor
+@RequirePermission("MONITORING_VIEW")
 public class MonitoringController {
 
     private final TenantRepository tenantRepository;

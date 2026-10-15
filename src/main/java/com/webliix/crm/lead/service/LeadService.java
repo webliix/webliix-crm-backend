@@ -22,4 +22,6 @@ public interface LeadService {
     void deleteLead(Long id);
 
     Page<LeadResponse> searchLeads(String keyword, Pageable pageable);
+
+    LeadResponse assignLead(Long id, Long assignedToUserId);
 }

@@ -2,6 +2,7 @@ package com.webliix.billing.controller;
 
 import java.util.List;
 
+import com.webliix.security.annotation.RequirePermission;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,7 @@ public class BillingController {
     private final SubscriptionRepository subscriptionRepository;
 
     @GetMapping("/plans")
+    @RequirePermission("BILLING_VIEW")
     public ResponseEntity<ApiResponse<List<Plan>>> getPlans() {
         List<Plan> plans = planRepository.findAll();
         return ResponseEntity.ok(
@@ -42,6 +44,7 @@ public class BillingController {
     }
 
     @GetMapping("/plans/{id}")
+    @RequirePermission("BILLING_VIEW")
     public ResponseEntity<ApiResponse<Plan>> getPlan(@PathVariable Long id) {
         Plan plan = planRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
@@ -55,6 +58,7 @@ public class BillingController {
     }
 
     @PostMapping("/subscriptions")
+    @RequirePermission("BILLING_MANAGE")
     public ResponseEntity<ApiResponse<Subscription>> createSubscription(@RequestBody SubscriptionRequest request) {
         Plan plan = planRepository.findById(request.getPlanId())
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
@@ -82,6 +86,7 @@ public class BillingController {
     }
 
     @GetMapping("/subscriptions/{tenantId}")
+    @RequirePermission("BILLING_VIEW")
     public ResponseEntity<ApiResponse<Subscription>> getSubscription(@PathVariable Long tenantId) {
         Subscription subscription = subscriptionRepository.findByTenantId(tenantId)
                 .orElseThrow(() -> new RuntimeException("Subscription not found"));

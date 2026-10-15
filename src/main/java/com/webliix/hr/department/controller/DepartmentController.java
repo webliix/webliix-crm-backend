@@ -3,6 +3,7 @@ package com.webliix.hr.department.controller;
 import com.webliix.hr.department.dto.DepartmentRequest;
 import com.webliix.hr.department.dto.DepartmentResponse;
 import com.webliix.hr.department.service.DepartmentService;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,12 +20,14 @@ public class DepartmentController {
     private final DepartmentService departmentService;
 
     @PostMapping
+    @RequirePermission("DEPARTMENTS_MANAGE")
     public ResponseEntity<ApiResponse<DepartmentResponse>> createDepartment(@RequestBody DepartmentRequest request) {
         DepartmentResponse response = departmentService.createDepartment(request);
         return ResponseEntity.ok(ApiResponse.<DepartmentResponse>builder().success(true).message("Department created successfully").data(response).build());
     }
 
     @GetMapping
+    @RequirePermission(anyOf = {"DEPARTMENTS_MANAGE", "EMPLOYEES_VIEW", "EMPLOYEES_MANAGE", "DASHBOARD_VIEW"})
     public ResponseEntity<ApiResponse<Page<DepartmentResponse>>> getDepartments(@RequestParam(defaultValue = "0") int page,
                                                                                 @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
@@ -33,12 +36,14 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("DEPARTMENTS_MANAGE")
     public ResponseEntity<ApiResponse<DepartmentResponse>> updateDepartment(@PathVariable Long id, @RequestBody DepartmentRequest request) {
         DepartmentResponse response = departmentService.updateDepartment(id, request);
         return ResponseEntity.ok(ApiResponse.<DepartmentResponse>builder().success(true).message("Department updated successfully").data(response).build());
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("DEPARTMENTS_MANAGE")
     public ResponseEntity<ApiResponse<Void>> deleteDepartment(@PathVariable Long id) {
         departmentService.deleteDepartment(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder().success(true).message("Department deleted successfully").build());

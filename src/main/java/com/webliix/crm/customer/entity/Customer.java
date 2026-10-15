@@ -53,6 +53,13 @@ public class Customer {
 
     private Boolean active;
 
+    @Column(name = "owner_id")
+    private Long ownerId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", insertable = false, updatable = false)
+    private com.webliix.security.entity.User ownerUser;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

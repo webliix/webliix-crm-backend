@@ -1,6 +1,11 @@
 package com.webliix.shared.exceptions;
 
+import com.webliix.audit.entity.AuditAction;
+import com.webliix.audit.entity.AuditModule;
+import com.webliix.audit.service.AuditService;
 import com.webliix.shared.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -10,7 +15,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final AuditService auditService;
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<?>> handleNotFound(
@@ -90,13 +98,39 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<ApiResponse<?>> handleAccessDenied(
-            org.springframework.security.access.AccessDeniedException ex) {
+            org.springframework.security.access.AccessDeniedException ex,
+            HttpServletRequest request) {
 
-        log.warn("Access denied: {}", ex.getMessage());
+        String requiredPermission = (String) request.getAttribute("REQUIRED_PERMISSION");
+        if (requiredPermission == null && ex.getMessage() != null && ex.getMessage().contains("Required permission: ")) {
+            requiredPermission = ex.getMessage().substring(ex.getMessage().indexOf("Required permission: ") + "Required permission: ".length()).trim();
+        }
+        if (requiredPermission == null) {
+            requiredPermission = "ACCESS_DENIED";
+        }
+
+        try {
+            auditService.record(
+                    AuditAction.ACCESS_DENIED,
+                    AuditModule.AUTH,
+                    null,
+                    null,
+                    null,
+                    null,
+                    "Denied at " + request.getRequestURI() + " (Required: " + requiredPermission + ")",
+                    request
+            );
+        } catch (Exception auditEx) {
+            log.warn("Failed to record access denied audit log: {}", auditEx.getMessage());
+        }
+
+        log.warn("Access denied for URI {}: Required permission: {}", request.getRequestURI(), requiredPermission);
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.builder()
                         .success(false)
-                        .message("Access denied: " + ex.getMessage())
+                        .code("FORBIDDEN")
+                        .message("Access denied. You do not possess the required permission.")
+                        .requiredPermission(requiredPermission)
                         .build());
     }
 

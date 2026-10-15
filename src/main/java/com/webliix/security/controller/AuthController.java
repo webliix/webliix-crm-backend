@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -58,15 +59,17 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.status(401).body(ApiResponse.<UserProfileResponse>builder().success(false).message("Unauthorized").build());
+    @com.webliix.security.annotation.RequirePermission(anyOf = {"DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
+    public ResponseEntity<ApiResponse<AuthMeResponse>> getCurrentUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(401).body(ApiResponse.<AuthMeResponse>builder().success(false).message("Unauthorized").build());
         }
-        UserProfileResponse profile = authService.getCurrentUser(userDetails.getUsername());
-        return ResponseEntity.ok(ApiResponse.<UserProfileResponse>builder().success(true).message("Profile retrieved successfully").data(profile).build());
+        AuthMeResponse me = authService.getAuthMe(auth);
+        return ResponseEntity.ok(ApiResponse.<AuthMeResponse>builder().success(true).message("Profile retrieved successfully").data(me).build());
     }
 
     @PutMapping("/profile")
+    @com.webliix.security.annotation.RequirePermission(anyOf = {"DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request
@@ -79,6 +82,7 @@ public class AuthController {
     }
 
     @PutMapping("/change-password")
+    @com.webliix.security.annotation.RequirePermission(anyOf = {"DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request

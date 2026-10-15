@@ -1,13 +1,16 @@
 package com.webliix.security.controller;
 
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.security.entity.User;
 import com.webliix.security.entity.UserApiToken;
+import com.webliix.security.model.WebliixPrincipal;
 import com.webliix.security.repository.UserApiTokenRepository;
 import com.webliix.security.repository.UserRepository;
 import com.webliix.shared.response.ApiResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/api-tokens")
 @RequiredArgsConstructor
+@RequirePermission("API_TOKENS_MANAGE")
 public class ApiTokenController {
 
     private final UserApiTokenRepository apiTokenRepository;
@@ -84,11 +88,14 @@ public class ApiTokenController {
     }
 
     private Long resolveUserId(UserDetails userDetails) {
+        if (userDetails instanceof WebliixPrincipal principal) {
+            return principal.getUserId();
+        }
         if (userDetails != null) {
             User user = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
             if (user != null) return user.getId();
         }
-        return 1L; // Fallback to primary admin user id
+        throw new AccessDeniedException("User authentication required");
     }
 
     @Data

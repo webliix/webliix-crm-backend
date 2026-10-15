@@ -1,5 +1,8 @@
 package com.webliix.finance.service.impl;
 
+import com.webliix.audit.entity.AuditAction;
+import com.webliix.audit.entity.AuditModule;
+import com.webliix.audit.service.AuditService;
 import com.webliix.finance.dto.ExpenseRequest;
 import com.webliix.finance.dto.ExpenseResponse;
 import com.webliix.finance.dto.ExpenseStatisticsResponse;
@@ -8,6 +11,12 @@ import com.webliix.finance.enums.ExpenseCategory;
 import com.webliix.finance.repository.ExpenseRepository;
 import com.webliix.finance.service.ExpenseService;
 import com.webliix.finance.util.ExpenseNumberGenerator;
+import com.webliix.security.evaluator.PermissionEvaluator;
+import com.webliix.security.model.WebliixPrincipal;
+import com.webliix.security.scoping.DataScope;
+import com.webliix.security.scoping.DataScopeService;
+import com.webliix.security.scoping.ScopeSpecs;
+import com.webliix.shared.exceptions.BusinessException;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +25,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,6 +47,9 @@ import java.util.Map;
 public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
+    private final DataScopeService dataScopeService;
+    private final PermissionEvaluator permissionEvaluator;
+    private final AuditService auditService;
 
     @Override
     @Transactional
@@ -46,16 +61,16 @@ public class ExpenseServiceImpl implements ExpenseService {
                 ? ExpenseNumberGenerator.next(last.getExpenseNumber())
                 : prefix + "000001";
 
-        String status = request.getStatus();
-        if (status == null || status.isBlank()) {
-            status = "APPROVED";
-        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = dataScopeService.getCurrentUserId();
+        String creatorUsername = auth != null ? auth.getName() : "SYSTEM";
 
         String title = request.getTitle();
         if (title == null || title.isBlank()) {
             title = request.getDescription();
         }
 
+        // Maker-checker rule: Status is ALWAYS forced to PENDING on creation
         Expense expense = Expense.builder()
                 .expenseNumber(expenseNumber)
                 .title(title)
@@ -65,28 +80,233 @@ public class ExpenseServiceImpl implements ExpenseService {
                 .expenseDate(request.getExpenseDate() != null ? request.getExpenseDate() : LocalDate.now())
                 .paymentMethod(request.getPaymentMethod())
                 .vendor(request.getVendor())
-                .status(status.toUpperCase())
+                .status("PENDING") // Maker-checker: forced PENDING
                 .notes(request.getNotes())
                 .referenceNumber(request.getReferenceNumber())
                 .receiptUrl(request.getReceiptUrl())
-                .createdBy(request.getCreatedBy())
+                .createdBy(creatorUsername)
+                .createdByUserId(currentUserId)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         Expense saved = expenseRepository.save(expense);
+        log.info("Expense {} created with forced PENDING status by user ID {}", saved.getExpenseNumber(), currentUserId);
         return toResponse(saved);
     }
 
     @Override
     public Page<ExpenseResponse> getAllExpenses(Pageable pageable) {
-        return expenseRepository.findAll(pageable).map(this::toResponse);
+        DataScope scope = dataScopeService.resolve("EXPENSES_VIEW");
+        Specification<Expense> spec = ScopeSpecs.expenseScope(scope);
+        return expenseRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
     @Override
     public Page<ExpenseResponse> getExpenses(ExpenseCategory category, String status, String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable) {
-        Specification<Expense> spec = buildExpenseSpecification(category, status, keyword, startDate, endDate);
-        return expenseRepository.findAll(spec, pageable).map(this::toResponse);
+        DataScope scope = dataScopeService.resolve("EXPENSES_VIEW");
+        Specification<Expense> scopeSpec = ScopeSpecs.expenseScope(scope);
+        Specification<Expense> filterSpec = buildExpenseSpecification(category, status, keyword, startDate, endDate);
+        Specification<Expense> combined = scopeSpec.and(filterSpec);
+        return expenseRepository.findAll(combined, pageable).map(this::toResponse);
+    }
+
+    @Override
+    public Page<ExpenseResponse> getMyExpenses(Pageable pageable) {
+        Long currentUserId = dataScopeService.getCurrentUserId();
+        Specification<Expense> ownSpec = (root, query, cb) -> cb.equal(root.get("createdByUserId"), currentUserId);
+        return expenseRepository.findAll(ownSpec, pageable).map(this::toResponse);
+    }
+
+    @Override
+    public ExpenseResponse getExpense(Long id) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
+
+        DataScope scope = dataScopeService.resolve("EXPENSES_VIEW");
+        if (!isExpenseInScope(expense, scope)) {
+            // Avoid leaking existence: return 404
+            throw new ResourceNotFoundException("Expense not found with id: " + id);
+        }
+
+        return toResponse(expense);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
+    public ExpenseResponse updateExpense(Long id, ExpenseRequest request) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
+
+        DataScope scope = dataScopeService.resolve("EXPENSES_EDIT");
+        if (!isExpenseInScope(expense, scope)) {
+            throw new ResourceNotFoundException("Expense not found with id: " + id);
+        }
+
+        if ("APPROVED".equalsIgnoreCase(expense.getStatus()) || "PAID".equalsIgnoreCase(expense.getStatus())) {
+            throw new BusinessException("Cannot modify an expense that has already been approved or paid.");
+        }
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            expense.setTitle(request.getTitle());
+        }
+        if (request.getCategory() != null) {
+            expense.setCategory(request.getCategory());
+        }
+        if (request.getDescription() != null) {
+            expense.setDescription(request.getDescription());
+        }
+        if (request.getAmount() != null) {
+            expense.setAmount(request.getAmount());
+        }
+        if (request.getExpenseDate() != null) {
+            expense.setExpenseDate(request.getExpenseDate());
+        }
+        if (request.getPaymentMethod() != null) {
+            expense.setPaymentMethod(request.getPaymentMethod());
+        }
+        if (request.getVendor() != null) {
+            expense.setVendor(request.getVendor());
+        }
+        if (request.getNotes() != null) {
+            expense.setNotes(request.getNotes());
+        }
+        if (request.getReferenceNumber() != null) {
+            expense.setReferenceNumber(request.getReferenceNumber());
+        }
+        if (request.getReceiptUrl() != null) {
+            expense.setReceiptUrl(request.getReceiptUrl());
+        }
+        expense.setUpdatedAt(LocalDateTime.now());
+
+        Expense updated = expenseRepository.save(expense);
+        return toResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
+    public void deleteExpense(Long id) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
+
+        DataScope scope = dataScopeService.resolve("EXPENSES_DELETE");
+        if (!isExpenseInScope(expense, scope)) {
+            throw new ResourceNotFoundException("Expense not found with id: " + id);
+        }
+
+        if ("PAID".equalsIgnoreCase(expense.getStatus())) {
+            throw new BusinessException("Cannot delete an expense that is already PAID.");
+        }
+
+        expenseRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
+    public ExpenseResponse updateExpenseStatus(Long id, String targetStatus) {
+        Expense expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
+
+        Long currentUserId = dataScopeService.getCurrentUserId();
+        String currentStatus = expense.getStatus() != null ? expense.getStatus().toUpperCase() : "PENDING";
+        String target = targetStatus != null ? targetStatus.trim().toUpperCase() : "";
+
+        // Explicit status transition map
+        if ("APPROVED".equals(target)) {
+            if (!permissionEvaluator.has("EXPENSES_APPROVE")) {
+                throw new AccessDeniedException("Missing required permission: EXPENSES_APPROVE");
+            }
+            if (!"PENDING".equals(currentStatus)) {
+                throw new BusinessException("Cannot approve an expense with status: " + currentStatus);
+            }
+            // Maker-checker rule: User can NEVER approve their own expense
+            if (expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
+                log.warn("Maker-checker violation: User {} attempted to approve own expense {}", currentUserId, id);
+                throw new AccessDeniedException("Maker-checker violation: You cannot approve your own expense.");
+            }
+            auditService.record(AuditAction.APPROVE, AuditModule.FINANCE, "Expense", expense.getId().toString(),
+                    currentStatus, "APPROVED", "Approved by user " + currentUserId, null);
+
+        } else if ("REJECTED".equals(target)) {
+            if (!permissionEvaluator.has("EXPENSES_APPROVE")) {
+                throw new AccessDeniedException("Missing required permission: EXPENSES_APPROVE");
+            }
+            if (!"PENDING".equals(currentStatus)) {
+                throw new BusinessException("Cannot reject an expense with status: " + currentStatus);
+            }
+            // Maker-checker rule: User can NEVER reject their own expense
+            if (expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
+                log.warn("Maker-checker violation: User {} attempted to reject own expense {}", currentUserId, id);
+                throw new AccessDeniedException("Maker-checker violation: You cannot reject your own expense.");
+            }
+            auditService.record(AuditAction.REJECT, AuditModule.FINANCE, "Expense", expense.getId().toString(),
+                    currentStatus, "REJECTED", "Rejected by user " + currentUserId, null);
+
+        } else if ("PAID".equals(target)) {
+            if (!permissionEvaluator.has("EXPENSES_PAY")) {
+                throw new AccessDeniedException("Missing required permission: EXPENSES_PAY");
+            }
+            if (!"APPROVED".equals(currentStatus)) {
+                throw new BusinessException("Cannot mark as PAID an expense that is not APPROVED.");
+            }
+            auditService.record(AuditAction.UPDATE, AuditModule.FINANCE, "Expense", expense.getId().toString(),
+                    currentStatus, "PAID", "Marked as paid by user " + currentUserId, null);
+
+        } else {
+            throw new BusinessException("Invalid status transition from " + currentStatus + " to " + target);
+        }
+
+        expense.setStatus(target);
+        expense.setUpdatedAt(LocalDateTime.now());
+        return toResponse(expenseRepository.save(expense));
+    }
+
+    @Override
+    @Cacheable(value = "expenseStatistics")
+    public ExpenseStatisticsResponse getExpenseStatistics() {
+        DataScope scope = dataScopeService.resolve("EXPENSES_VIEW");
+        LocalDate now = LocalDate.now();
+        LocalDate firstDayOfMonth = now.withDayOfMonth(1);
+
+        long totalCount = expenseRepository.count(ScopeSpecs.expenseScope(scope));
+        BigDecimal total = expenseRepository.sumTotalAmount();
+        BigDecimal mtd = expenseRepository.sumAmountBetween(firstDayOfMonth, now);
+        BigDecimal approved = expenseRepository.sumApprovedAmount();
+        BigDecimal pending = expenseRepository.sumPendingAmount();
+
+        Map<String, BigDecimal> breakdown = new HashMap<>();
+        List<Object[]> categoryData = expenseRepository.sumAmountByCategory();
+        if (categoryData != null) {
+            for (Object[] row : categoryData) {
+                if (row != null && row.length >= 2 && row[0] != null) {
+                    String catName = row[0] instanceof ExpenseCategory ? ((ExpenseCategory) row[0]).name() : row[0].toString();
+                    BigDecimal amt = (BigDecimal) row[1];
+                    breakdown.put(catName, amt != null ? amt : BigDecimal.ZERO);
+                }
+            }
+        }
+
+        ExpenseStatisticsResponse stats = new ExpenseStatisticsResponse();
+        stats.setTotalExpenses(total != null ? total : BigDecimal.ZERO);
+        stats.setMonthToDateExpenses(mtd != null ? mtd : BigDecimal.ZERO);
+        stats.setApprovedExpenses(approved != null ? approved : BigDecimal.ZERO);
+        stats.setPendingExpenses(pending != null ? pending : BigDecimal.ZERO);
+        stats.setTotalCount((int) totalCount);
+        stats.setCategoryBreakdown(breakdown);
+        return stats;
+    }
+
+    private boolean isExpenseInScope(Expense expense, DataScope scope) {
+        if (scope.isAll()) {
+            return true;
+        }
+        if (scope.isOwn()) {
+            return expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(scope.getUserId());
+        }
+        return true;
     }
 
     private Specification<Expense> buildExpenseSpecification(ExpenseCategory category, String status, String keyword, LocalDate startDate, LocalDate endDate) {
@@ -124,114 +344,6 @@ public class ExpenseServiceImpl implements ExpenseService {
         };
     }
 
-    @Override
-    public ExpenseResponse getExpense(Long id) {
-        Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
-        return toResponse(expense);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
-    public ExpenseResponse updateExpense(Long id, ExpenseRequest request) {
-        Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
-
-        if (request.getTitle() != null && !request.getTitle().isBlank()) {
-            expense.setTitle(request.getTitle());
-        }
-        if (request.getCategory() != null) {
-            expense.setCategory(request.getCategory());
-        }
-        if (request.getDescription() != null) {
-            expense.setDescription(request.getDescription());
-        }
-        if (request.getAmount() != null) {
-            expense.setAmount(request.getAmount());
-        }
-        if (request.getExpenseDate() != null) {
-            expense.setExpenseDate(request.getExpenseDate());
-        }
-        if (request.getPaymentMethod() != null) {
-            expense.setPaymentMethod(request.getPaymentMethod());
-        }
-        if (request.getVendor() != null) {
-            expense.setVendor(request.getVendor());
-        }
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            expense.setStatus(request.getStatus().toUpperCase());
-        }
-        if (request.getNotes() != null) {
-            expense.setNotes(request.getNotes());
-        }
-        if (request.getReferenceNumber() != null) {
-            expense.setReferenceNumber(request.getReferenceNumber());
-        }
-        if (request.getReceiptUrl() != null) {
-            expense.setReceiptUrl(request.getReceiptUrl());
-        }
-        expense.setUpdatedAt(LocalDateTime.now());
-
-        Expense updated = expenseRepository.save(expense);
-        return toResponse(updated);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
-    public void deleteExpense(Long id) {
-        if (!expenseRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Expense not found with id: " + id);
-        }
-        expenseRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional
-    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
-    public ExpenseResponse updateExpenseStatus(Long id, String status) {
-        Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
-        expense.setStatus(status.toUpperCase());
-        expense.setUpdatedAt(LocalDateTime.now());
-        return toResponse(expenseRepository.save(expense));
-    }
-
-    @Override
-    @Cacheable(value = "expenseStatistics")
-    public ExpenseStatisticsResponse getExpenseStatistics() {
-        LocalDate now = LocalDate.now();
-        LocalDate firstDayOfMonth = now.withDayOfMonth(1);
-
-        long totalCount = expenseRepository.count();
-        BigDecimal total = expenseRepository.sumTotalAmount();
-        BigDecimal mtd = expenseRepository.sumAmountBetween(firstDayOfMonth, now);
-        BigDecimal approved = expenseRepository.sumApprovedAmount();
-        BigDecimal pending = expenseRepository.sumPendingAmount();
-
-        Map<String, BigDecimal> breakdown = new HashMap<>();
-        List<Object[]> categoryData = expenseRepository.sumAmountByCategory();
-        if (categoryData != null) {
-            for (Object[] row : categoryData) {
-                if (row != null && row.length >= 2 && row[0] != null) {
-                    String catName = row[0] instanceof ExpenseCategory ? ((ExpenseCategory) row[0]).name() : row[0].toString();
-                    BigDecimal amt = (BigDecimal) row[1];
-                    breakdown.put(catName, amt != null ? amt : BigDecimal.ZERO);
-                }
-            }
-        }
-
-        ExpenseStatisticsResponse stats = new ExpenseStatisticsResponse();
-        stats.setTotalExpenses(total != null ? total : BigDecimal.ZERO);
-        stats.setMonthToDateExpenses(mtd != null ? mtd : BigDecimal.ZERO);
-        stats.setApprovedExpenses(approved != null ? approved : BigDecimal.ZERO);
-        stats.setPendingExpenses(pending != null ? pending : BigDecimal.ZERO);
-        stats.setTotalCount((int) totalCount);
-        stats.setCategoryBreakdown(breakdown);
-        return stats;
-    }
-
     private ExpenseResponse toResponse(Expense expense) {
         ExpenseResponse response = new ExpenseResponse();
         response.setId(expense.getId());
@@ -243,7 +355,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         response.setExpenseDate(expense.getExpenseDate());
         response.setPaymentMethod(expense.getPaymentMethod());
         response.setVendor(expense.getVendor());
-        response.setStatus(expense.getStatus() != null ? expense.getStatus() : "APPROVED");
+        response.setStatus(expense.getStatus() != null ? expense.getStatus() : "PENDING");
         response.setNotes(expense.getNotes());
         response.setReferenceNumber(expense.getReferenceNumber());
         response.setReceiptUrl(expense.getReceiptUrl());

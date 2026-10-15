@@ -9,6 +9,7 @@ import com.webliix.crm.customer.service.CustomerService;
 import com.webliix.crm.customer.service.CustomerStatisticsService;
 import com.webliix.finance.dto.InvoiceResponse;
 import com.webliix.projects.dto.ProjectResponse;
+import com.webliix.security.annotation.RequirePermission;
 import com.webliix.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ public class CustomerController {
     private final CustomerStatisticsService statisticsService;
 
     @PostMapping
+    @RequirePermission("CUSTOMERS_CREATE")
     public ResponseEntity<ApiResponse<CustomerResponse>> createCustomer(@RequestBody CreateCustomerRequest request) {
         CustomerResponse res = customerService.createCustomer(request);
         return ResponseEntity.ok(ApiResponse.<CustomerResponse>builder()
@@ -38,6 +40,7 @@ public class CustomerController {
     }
 
     @GetMapping
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<Page<CustomerResponse>>> getCustomers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -52,6 +55,7 @@ public class CustomerController {
     }
 
     @GetMapping("/search")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<Page<CustomerResponse>>> searchCustomers(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -67,6 +71,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCustomer(@PathVariable Long id) {
         CustomerResponse res = customerService.getCustomer(id);
         return ResponseEntity.ok(ApiResponse.<CustomerResponse>builder()
@@ -77,6 +82,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
+    @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
             @PathVariable Long id,
             @RequestBody CreateCustomerRequest request
@@ -90,6 +96,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
+    @RequirePermission("CUSTOMERS_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable Long id) {
         customerService.deleteCustomer(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -99,6 +106,7 @@ public class CustomerController {
     }
 
     @GetMapping("/statistics")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<CustomerStatisticsResponse>> getStatistics() {
         CustomerStatisticsResponse res = statisticsService.getStatistics();
         return ResponseEntity.ok(ApiResponse.<CustomerStatisticsResponse>builder()
@@ -109,6 +117,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/projects")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getCustomerProjects(@PathVariable Long id) {
         List<ProjectResponse> res = customerService.getCustomerProjects(id);
         return ResponseEntity.ok(ApiResponse.<List<ProjectResponse>>builder()
@@ -119,6 +128,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/invoices")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<InvoiceResponse>>> getCustomerInvoices(@PathVariable Long id) {
         List<InvoiceResponse> res = customerService.getCustomerInvoices(id);
         return ResponseEntity.ok(ApiResponse.<List<InvoiceResponse>>builder()
@@ -129,6 +139,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/contacts")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<CustomerContact>>> getCustomerContacts(@PathVariable Long id) {
         List<CustomerContact> res = customerService.getCustomerContacts(id);
         return ResponseEntity.ok(ApiResponse.<List<CustomerContact>>builder()
@@ -139,6 +150,7 @@ public class CustomerController {
     }
 
     @PostMapping("/{id}/contacts")
+    @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerContact>> addCustomerContact(
             @PathVariable Long id,
             @RequestBody CustomerContact contact
@@ -152,6 +164,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/notes")
+    @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<CustomerNote>>> getCustomerNotes(@PathVariable Long id) {
         List<CustomerNote> res = customerService.getCustomerNotes(id);
         return ResponseEntity.ok(ApiResponse.<List<CustomerNote>>builder()
@@ -162,6 +175,7 @@ public class CustomerController {
     }
 
     @PostMapping("/{id}/notes")
+    @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerNote>> addCustomerNote(
             @PathVariable Long id,
             @RequestBody CustomerNote note
