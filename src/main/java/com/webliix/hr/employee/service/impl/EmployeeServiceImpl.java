@@ -18,6 +18,8 @@ import com.webliix.security.repository.UserRepository;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +46,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "employeeStatistics", allEntries = true)
     public EmployeeResponse createEmployee(EmployeeRequest request) {
         if (request.getEmail() == null || request.getEmail().isBlank()) {
             throw new IllegalArgumentException("Email is required for employee creation");
@@ -155,6 +158,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "employeeStatistics", allEntries = true)
     public EmployeeResponse updateEmployee(Long id, EmployeeRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
@@ -243,6 +247,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "employeeStatistics", allEntries = true)
     public void deleteEmployee(Long id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
@@ -257,15 +262,16 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    @Cacheable(value = "employeeStatistics")
     public EmployeeStatisticsResponse getEmployeeStatistics() {
-        List<Employee> employees = employeeRepository.findAll();
-        long total = employees.size();
-        long active = employees.stream().filter(emp -> Boolean.TRUE.equals(emp.getActive())).count();
-        long inactive = total - active;
-        long newThisMonth = employees.stream()
-                .map(Employee::getJoiningDate)
-                .filter(date -> date != null && date.getMonthValue() == LocalDate.now().getMonthValue() && date.getYear() == LocalDate.now().getYear())
-                .count();
+        LocalDate now = LocalDate.now();
+        LocalDate startOfMonth = now.withDayOfMonth(1);
+        LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
+
+        long total = employeeRepository.count();
+        long active = employeeRepository.countByActiveTrue();
+        long inactive = employeeRepository.countByActiveFalse();
+        long newThisMonth = employeeRepository.countByJoiningDateBetween(startOfMonth, endOfMonth);
 
         EmployeeStatisticsResponse response = new EmployeeStatisticsResponse();
         response.setTotalEmployees(total);

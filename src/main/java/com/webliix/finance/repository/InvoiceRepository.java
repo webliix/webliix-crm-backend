@@ -1,11 +1,14 @@
 package com.webliix.finance.repository;
 
 import com.webliix.finance.entity.Invoice;
+import com.webliix.finance.enums.InvoiceStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,4 +33,20 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             String customerName,
             String projectName,
             Pageable pageable);
+
+    long countByStatus(InvoiceStatus status);
+
+    long countByStatusNot(InvoiceStatus status);
+
+    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i")
+    BigDecimal sumTotalAmount();
+
+    @Query("SELECT COALESCE(SUM(i.paidAmount), 0) FROM Invoice i")
+    BigDecimal sumPaidAmount();
+
+    @Query("SELECT COALESCE(SUM(i.pendingAmount), 0) FROM Invoice i")
+    BigDecimal sumPendingAmount();
+
+    @Query("SELECT FUNCTION('MONTH', i.issueDate), COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.issueDate IS NOT NULL GROUP BY FUNCTION('MONTH', i.issueDate)")
+    List<Object[]> sumTotalAmountGroupByMonth();
 }

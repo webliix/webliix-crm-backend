@@ -19,6 +19,8 @@ import com.webliix.tickets.repository.TicketAttachmentRepository;
 import com.webliix.tickets.repository.TicketCommentRepository;
 import com.webliix.tickets.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -329,22 +331,14 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "ticketDashboard")
     public TicketDashboardResponse getDashboard() {
         TicketDashboardResponse response = new TicketDashboardResponse();
-        try {
-            response.setOpenTickets(ticketRepository.countByStatus(TicketStatus.OPEN));
-            response.setInProgressTickets(ticketRepository.countByStatus(TicketStatus.IN_PROGRESS));
-            response.setResolvedTickets(ticketRepository.countByStatus(TicketStatus.RESOLVED));
-            response.setCriticalTickets(ticketRepository.countByPriority(TicketPriority.CRITICAL));
-            response.setOverdueTickets(ticketRepository.countByDueDateBeforeAndStatusNot(LocalDate.now(), TicketStatus.CLOSED));
-        } catch (Exception e) {
-            List<Ticket> all = ticketRepository.findAll();
-            response.setOpenTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.OPEN).count());
-            response.setInProgressTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.IN_PROGRESS).count());
-            response.setResolvedTickets(all.stream().filter(t -> t.getStatus() == TicketStatus.RESOLVED).count());
-            response.setCriticalTickets(all.stream().filter(t -> t.getPriority() == TicketPriority.CRITICAL).count());
-            response.setOverdueTickets(all.stream().filter(t -> t.getDueDate() != null && t.getDueDate().isBefore(LocalDate.now()) && t.getStatus() != TicketStatus.CLOSED).count());
-        }
+        response.setOpenTickets(ticketRepository.countByStatus(TicketStatus.OPEN));
+        response.setInProgressTickets(ticketRepository.countByStatus(TicketStatus.IN_PROGRESS));
+        response.setResolvedTickets(ticketRepository.countByStatus(TicketStatus.RESOLVED));
+        response.setCriticalTickets(ticketRepository.countByPriority(TicketPriority.CRITICAL));
+        response.setOverdueTickets(ticketRepository.countByDueDateBeforeAndStatusNot(LocalDate.now(), TicketStatus.CLOSED));
         return response;
     }
 

@@ -18,6 +18,10 @@ import com.webliix.security.repository.UserRepository;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -45,8 +50,20 @@ public class BlogServiceImpl implements BlogService {
     private final BlogEngagementService engagementService;
     private final UserRepository userRepository;
 
+    private final AtomicBoolean hasScheduledPosts = new AtomicBoolean(false);
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initScheduledPostsFlag() {
+        try {
+            hasScheduledPosts.set(postRepository.existsByStatus(BlogPostStatus.SCHEDULED));
+        } catch (Exception ex) {
+            log.warn("Could not initialize scheduled posts flag: {}", ex.getMessage());
+        }
+    }
+
     @Override
     @Transactional
+    @CacheEvict(value = "blogStatistics", allEntries = true)
     public BlogPostResponse createPost(CreateBlogPostRequest request) {
         String slug = generateSlug(request.getSlug(), request.getTitle());
         BlogPostStatus status = request.getStatus() != null ? request.getStatus() : BlogPostStatus.DRAFT;
@@ -104,6 +121,10 @@ public class BlogServiceImpl implements BlogService {
 
         BlogPost saved = postRepository.save(post);
 
+        if (saved.getStatus() == BlogPostStatus.SCHEDULED) {
+            hasScheduledPosts.set(true);
+        }
+
         // Auto-create category/tags if new
         autoRegisterCategoryAndTags(saved.getCategory(), saved.getTags());
 
@@ -112,6 +133,7 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "blogStatistics", allEntries = true)
     public BlogPostResponse updatePost(Long id, CreateBlogPostRequest request) {
         BlogPost post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Blog post not found with id: " + id));
@@ -159,6 +181,11 @@ public class BlogServiceImpl implements BlogService {
         post.setUpdatedAt(LocalDateTime.now());
 
         BlogPost saved = postRepository.save(post);
+
+        if (saved.getStatus() == BlogPostStatus.SCHEDULED) {
+            hasScheduledPosts.set(true);
+        }
+
         autoRegisterCategoryAndTags(saved.getCategory(), saved.getTags());
 
         return toResponse(saved, false);
@@ -248,6 +275,7 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "blogStatistics", allEntries = true)
     public void deletePost(Long id) {
         if (!postRepository.existsById(id)) {
             throw new ResourceNotFoundException("Blog post not found with id: " + id);
@@ -257,6 +285,7 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "blogStatistics", allEntries = true)
     public void setPostStatus(Long id, BlogPostStatus status) {
         BlogPost post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Blog post not found with id: " + id));
@@ -264,6 +293,9 @@ public class BlogServiceImpl implements BlogService {
         post.setStatus(status);
         if (status == BlogPostStatus.PUBLISHED && post.getPublishedAt() == null) {
             post.setPublishedAt(LocalDateTime.now());
+        }
+        if (status == BlogPostStatus.SCHEDULED) {
+            hasScheduledPosts.set(true);
         }
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.save(post);
@@ -332,12 +364,13 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
+    @Cacheable(value = "blogStatistics")
     public BlogStatisticsResponse getStatistics() {
         long total = postRepository.count();
         long published = postRepository.countByStatus(BlogPostStatus.PUBLISHED);
         long draft = postRepository.countByStatus(BlogPostStatus.DRAFT);
-        long totalViews = postRepository.findAll().stream().mapToLong(p -> p.getViewsCount() != null ? p.getViewsCount() : 0L).sum();
-        long totalLikes = postRepository.findAll().stream().mapToLong(p -> p.getLikesCount() != null ? p.getLikesCount() : 0L).sum();
+        long totalViews = postRepository.sumTotalViews();
+        long totalLikes = postRepository.sumTotalLikes();
         long totalComments = commentRepository.count();
 
         return BlogStatisticsResponse.builder()
@@ -561,10 +594,14 @@ public class BlogServiceImpl implements BlogService {
                 .build();
     }
 
-    // Auto-publishing Cron Job
-    @Scheduled(cron = "0 * * * * *") // Every minute
+    // Auto-publishing Cron Job: runs on configurable cron (default every 15 minutes, 0 */15 * * * *)
+    // and returns immediately without querying database if no posts are marked SCHEDULED.
+    @Scheduled(cron = "${app.blog.publish-cron:0 */15 * * * *}")
     @Transactional
     public void publishScheduledPosts() {
+        if (!hasScheduledPosts.get()) {
+            return;
+        }
         LocalDateTime now = LocalDateTime.now();
         List<BlogPost> scheduled = postRepository.findByScheduledPublishAtBeforeAndStatus(now, BlogPostStatus.SCHEDULED);
         for (BlogPost p : scheduled) {
@@ -574,6 +611,7 @@ public class BlogServiceImpl implements BlogService {
             p.setUpdatedAt(now);
             postRepository.save(p);
         }
+        hasScheduledPosts.set(postRepository.existsByStatus(BlogPostStatus.SCHEDULED));
     }
 
     // Dynamic XML Sitemap Generator

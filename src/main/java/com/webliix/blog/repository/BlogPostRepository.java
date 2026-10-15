@@ -57,4 +57,12 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE BlogPost b SET b.commentsCount = b.commentsCount + 1 WHERE b.id = :id")
     void incrementCommentsCount(@Param("id") Long id);
+
+    @Query("SELECT COALESCE(SUM(b.viewsCount), 0) FROM BlogPost b")
+    long sumTotalViews();
+
+    @Query("SELECT COALESCE(SUM(b.likesCount), 0) FROM BlogPost b")
+    long sumTotalLikes();
+
+    boolean existsByStatus(BlogPostStatus status);
 }

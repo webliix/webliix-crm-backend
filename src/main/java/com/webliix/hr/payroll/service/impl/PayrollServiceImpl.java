@@ -13,6 +13,8 @@ import com.webliix.hr.payroll.service.PayrollService;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class PayrollServiceImpl implements PayrollService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "payrollDashboard", allEntries = true)
     public PayrollResponse generatePayroll(PayrollRequest request) {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found with id: " + request.getEmployeeId()));
@@ -75,23 +78,18 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Cacheable(value = "payrollDashboard")
     public PayrollDashboardResponse getPayrollDashboard() {
-        BigDecimal totalGrossSalary = BigDecimal.ZERO;
-        BigDecimal totalNetSalary = BigDecimal.ZERO;
-        BigDecimal totalDeductions = BigDecimal.ZERO;
-
         long totalPayrolls = payrollRepository.count();
-        for (Payroll payroll : payrollRepository.findAll()) {
-            totalGrossSalary = totalGrossSalary.add(payroll.getGrossSalary() != null ? payroll.getGrossSalary() : BigDecimal.ZERO);
-            totalNetSalary = totalNetSalary.add(payroll.getNetSalary() != null ? payroll.getNetSalary() : BigDecimal.ZERO);
-            totalDeductions = totalDeductions.add(payroll.getDeductions() != null ? payroll.getDeductions() : BigDecimal.ZERO);
-        }
+        BigDecimal totalGrossSalary = payrollRepository.sumGrossSalary();
+        BigDecimal totalNetSalary = payrollRepository.sumNetSalary();
+        BigDecimal totalDeductions = payrollRepository.sumDeductions();
 
         return PayrollDashboardResponse.builder()
                 .totalPayrolls(totalPayrolls)
-                .totalGrossSalary(totalGrossSalary)
-                .totalNetSalary(totalNetSalary)
-                .totalDeductions(totalDeductions)
+                .totalGrossSalary(totalGrossSalary != null ? totalGrossSalary : BigDecimal.ZERO)
+                .totalNetSalary(totalNetSalary != null ? totalNetSalary : BigDecimal.ZERO)
+                .totalDeductions(totalDeductions != null ? totalDeductions : BigDecimal.ZERO)
                 .build();
     }
 

@@ -11,6 +11,8 @@ import com.webliix.finance.util.ExpenseNumberGenerator;
 import com.webliix.shared.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,6 +38,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
     public ExpenseResponse createExpense(ExpenseRequest request) {
         String prefix = ExpenseNumberGenerator.currentPrefix();
         Expense last = expenseRepository.findTopByExpenseNumberStartingWithOrderByIdDesc(prefix);
@@ -130,6 +133,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
     public ExpenseResponse updateExpense(Long id, ExpenseRequest request) {
         Expense expense = expenseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
@@ -175,6 +179,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
     public void deleteExpense(Long id) {
         if (!expenseRepository.existsById(id)) {
             throw new ResourceNotFoundException("Expense not found with id: " + id);
@@ -184,6 +189,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"expenseStatistics", "revenueStatistics"}, allEntries = true)
     public ExpenseResponse updateExpenseStatus(Long id, String status) {
         Expense expense = expenseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found with id: " + id));
@@ -193,42 +199,35 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
 
     @Override
+    @Cacheable(value = "expenseStatistics")
     public ExpenseStatisticsResponse getExpenseStatistics() {
-        List<Expense> all = expenseRepository.findAll();
         LocalDate now = LocalDate.now();
         LocalDate firstDayOfMonth = now.withDayOfMonth(1);
 
-        BigDecimal total = BigDecimal.ZERO;
-        BigDecimal mtd = BigDecimal.ZERO;
-        BigDecimal approved = BigDecimal.ZERO;
-        BigDecimal pending = BigDecimal.ZERO;
+        long totalCount = expenseRepository.count();
+        BigDecimal total = expenseRepository.sumTotalAmount();
+        BigDecimal mtd = expenseRepository.sumAmountBetween(firstDayOfMonth, now);
+        BigDecimal approved = expenseRepository.sumApprovedAmount();
+        BigDecimal pending = expenseRepository.sumPendingAmount();
+
         Map<String, BigDecimal> breakdown = new HashMap<>();
-
-        for (Expense e : all) {
-            BigDecimal amt = e.getAmount() != null ? e.getAmount() : BigDecimal.ZERO;
-            total = total.add(amt);
-
-            if (e.getExpenseDate() != null && !e.getExpenseDate().isBefore(firstDayOfMonth) && !e.getExpenseDate().isAfter(now)) {
-                mtd = mtd.add(amt);
+        List<Object[]> categoryData = expenseRepository.sumAmountByCategory();
+        if (categoryData != null) {
+            for (Object[] row : categoryData) {
+                if (row != null && row.length >= 2 && row[0] != null) {
+                    String catName = row[0] instanceof ExpenseCategory ? ((ExpenseCategory) row[0]).name() : row[0].toString();
+                    BigDecimal amt = (BigDecimal) row[1];
+                    breakdown.put(catName, amt != null ? amt : BigDecimal.ZERO);
+                }
             }
-
-            String st = e.getStatus() != null ? e.getStatus().toUpperCase() : "APPROVED";
-            if ("APPROVED".equals(st) || "PAID".equals(st)) {
-                approved = approved.add(amt);
-            } else if ("PENDING".equals(st)) {
-                pending = pending.add(amt);
-            }
-
-            String cat = e.getCategory() != null ? e.getCategory().name() : "OTHER";
-            breakdown.put(cat, breakdown.getOrDefault(cat, BigDecimal.ZERO).add(amt));
         }
 
         ExpenseStatisticsResponse stats = new ExpenseStatisticsResponse();
-        stats.setTotalExpenses(total);
-        stats.setMonthToDateExpenses(mtd);
-        stats.setApprovedExpenses(approved);
-        stats.setPendingExpenses(pending);
-        stats.setTotalCount(all.size());
+        stats.setTotalExpenses(total != null ? total : BigDecimal.ZERO);
+        stats.setMonthToDateExpenses(mtd != null ? mtd : BigDecimal.ZERO);
+        stats.setApprovedExpenses(approved != null ? approved : BigDecimal.ZERO);
+        stats.setPendingExpenses(pending != null ? pending : BigDecimal.ZERO);
+        stats.setTotalCount((int) totalCount);
         stats.setCategoryBreakdown(breakdown);
         return stats;
     }

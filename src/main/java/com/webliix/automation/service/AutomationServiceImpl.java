@@ -9,6 +9,8 @@ import com.webliix.automation.enums.TriggerType;
 import com.webliix.automation.mapper.AutomationRuleMapper;
 import com.webliix.automation.repository.AutomationExecutionRepository;
 import com.webliix.automation.repository.AutomationRuleRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class AutomationServiceImpl implements AutomationService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "automationDashboard", allEntries = true)
     public AutomationRuleResponse createRule(CreateAutomationRuleRequest request) {
         AutomationRule rule = AutomationRule.builder()
                 .name(request.getName())
@@ -58,6 +61,7 @@ public class AutomationServiceImpl implements AutomationService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "automationDashboard", allEntries = true)
     public AutomationRuleResponse updateRule(Long id, UpdateAutomationRuleRequest request) {
         AutomationRule rule = ruleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Automation rule not found: " + id));
@@ -73,27 +77,31 @@ public class AutomationServiceImpl implements AutomationService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "automationDashboard", allEntries = true)
     public void deleteRule(Long id) {
         ruleRepository.deleteById(id);
     }
 
     @Override
     public List<AutomationExecutionResponse> getExecutions() {
-        return executionRepository.findAll().stream()
+        return executionRepository.findTop50ByOrderByCreatedAtDesc().stream()
                 .map(this::toExecutionResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
+    @Cacheable(value = "automationDashboard")
     public AutomationDashboardResponse getDashboard() {
-        List<AutomationExecution> executions = executionRepository.findAll();
         long totalRules = ruleRepository.count();
-        long activeRules = ruleRepository.findAll().stream().filter(AutomationRule::getEnabled).count();
-        long totalExecutions = executions.size();
-        long successfulExecutions = executions.stream().filter(e -> e.getStatus() == AutomationExecutionStatus.SUCCESS).count();
-        long failedExecutions = executions.stream().filter(e -> e.getStatus() == AutomationExecutionStatus.FAILED).count();
-        var executionsByTrigger = ruleRepository.findAll().stream()
-                .collect(Collectors.groupingBy(r -> r.getTriggerType().name(), Collectors.counting()));
+        long activeRules = ruleRepository.countByEnabledTrue();
+        long totalExecutions = executionRepository.count();
+        long successfulExecutions = executionRepository.countByStatus(AutomationExecutionStatus.SUCCESS);
+        long failedExecutions = executionRepository.countByStatus(AutomationExecutionStatus.FAILED);
+        Map<String, Long> executionsByTrigger = ruleRepository.countGroupByTriggerType().stream()
+                .collect(Collectors.toMap(
+                        row -> ((TriggerType) row[0]).name(),
+                        row -> ((Number) row[1]).longValue()
+                ));
 
         return AutomationDashboardResponse.builder()
                 .totalRules(totalRules)

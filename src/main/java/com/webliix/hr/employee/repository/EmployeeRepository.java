@@ -4,6 +4,7 @@ import com.webliix.hr.employee.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 @Repository
@@ -12,4 +13,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findByEmail(String email);
     Optional<Employee> findByUserId(Long userId);
     boolean existsByEmail(String email);
+
+    long countByActiveTrue();
+    long countByActiveFalse();
+    long countByJoiningDateBetween(LocalDate start, LocalDate end);
 }

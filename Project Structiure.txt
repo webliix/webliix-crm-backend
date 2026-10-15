@@ -1,57 +1,16 @@
-backend/
-├── pom.xml
-├── src/
-│   ├── main/
-│   │   ├── java/com/webliix/
-│   │   │   ├── WebliixApplication.java
-│   │   │   ├── shared/                     # Interfaces, DTOs, Events, Exceptions
-│   │   │   │   ├── interfaces/
-│   │   │   │   │   ├── EmailService.java
-│   │   │   │   │   ├── StorageService.java
-│   │   │   │   │   └── AuditLogger.java
-│   │   │   │   ├── events/
-│   │   │   │   │   ├── LeadWonEvent.java
-│   │   │   │   │   ├── InvoiceDueEvent.java
-│   │   │   │   │   └── TaskCompletedEvent.java
-│   │   │   │   ├── dto/
-│   │   │   │   │   └── ApiResponse.java
-│   │   │   │   └── exceptions/
-│   │   │   │       ├── GlobalExceptionHandler.java
-│   │   │   │       └── ResourceNotFoundException.java
-│   │   │   ├── security/                   # JWT, RBAC, SecurityConfig
-│   │   │   │   ├── SecurityConfig.java
-│   │   │   │   ├── JwtAuthFilter.java
-│   │   │   │   ├── JwtService.java
-│   │   │   │   └── UserDetailsServiceImpl.java
-│   │   │   ├── core/                       # Users, Roles, Permissions
-│   │   │   │   ├── domain/
-│   │   │   │   ├── repository/
-│   │   │   │   ├── service/
-│   │   │   │   ├── controller/            # AuthController, UserController
-│   │   │   │   └── dto/
-│   │   │   ├── crm/                        # Leads, Clients, Contacts
-│   │   │   │   ├── domain/
-│   │   │   │   ├── repository/
-│   │   │   │   ├── service/
-│   │   │   │   ├── controller/
-│   │   │   │   ├── dto/
-│   │   │   │   └── listeners/             # e.g., LeadEventListener
-│   │   │   ├── projects/
-│   │   │   ├── finance/                   # Invoices, Payments
-│   │   │   ├── tickets/
-│   │   │   ├── hr/                        # Employees, Payroll, Attendance
-│   │   │   ├── assets/                    # Domains, Hosting
-│   │   │   ├── automation/               # Schedulers, Event handlers
-│   │   │   │   ├── scheduler/
-│   │   │   │   └── listeners/
-│   │   │   ├── notifications/            # Email, WhatsApp, Push
-│   │   │   ├── reports/
-│   │   │   └── audit/
-│   │   ├── resources/
-│   │   │   ├── application.yml
-│   │   │   ├── application-dev.yml
-│   │   │   ├── db/migration/             # Flyway scripts
-│   │   │   │   ├── V1__init_schema.sql
-│   │   │   │   └── V2__sample_data.sql
-│   │   │   └── templates/email/          # Thymeleaf email templates
-│   │   └── ...
+Neon db-webliiix:
+postgresql://neondb_owner:npg_yVCAv8LaHw5x@ep-old-feather-azfnag8s-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+Redis
+UPSTASH_REDIS_REST_URL="https://boss-baboon-279801.upstash.io"
+UPSTASH_REDIS_REST_TOKEN="gQAAAAAABET5AAIgcDJhZDg2NzQ2ODAzYmI0YWQyYjY0ZDQ4NThkMWRmYjlmZQ"
+
+
+Beavo api
+xreysib-95c953b00a9007f9cfc984ecfa0393c62df9c152dd866c6eb5ac5dff0da3679e-Lnx9paWi6yNEU5zS 
+
+
+
+Neon Webliix |BAckup query
+
+"C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -Fc -v -d "postgresql://neondb_owner:npg_yVCAv8LaHw5x@ep-old-feather-azfnag8s-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require" -f "C:\NeonBackup\neon-backup.dump"

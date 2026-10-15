@@ -16,6 +16,8 @@ import com.webliix.projects.entity.Project;
 import com.webliix.projects.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"invoiceDashboard", "revenueStatistics"}, allEntries = true)
     public InvoiceResponse createInvoice(CreateInvoiceRequest req) {
         Invoice invoice = InvoiceMapper.toEntity(req);
 
@@ -246,6 +249,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"invoiceDashboard", "revenueStatistics"}, allEntries = true)
     public InvoiceResponse updateInvoice(Long id, CreateInvoiceRequest req) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
@@ -298,6 +302,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"invoiceDashboard", "revenueStatistics"}, allEntries = true)
     public void deleteInvoice(Long id) {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + id));
@@ -329,33 +334,26 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
+    @Cacheable(value = "invoiceDashboard")
     public InvoiceDashboardResponse getDashboard() {
         long total = invoiceRepository.count();
-        long paid = invoiceRepository.findAll().stream()
-                .filter(i -> i.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID)
-                .count();
-        long overdue = invoiceRepository.findAll().stream()
-                .filter(i -> i.getStatus() == com.webliix.finance.enums.InvoiceStatus.OVERDUE)
-                .count();
-        long pending = invoiceRepository.findAll().stream()
-                .filter(i -> i.getStatus() != com.webliix.finance.enums.InvoiceStatus.PAID)
-                .count();
-        BigDecimal revenue = invoiceRepository.findAll().stream()
-                .map(Invoice::getTotalAmount)
-                .filter(amount -> amount != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long paid = invoiceRepository.countByStatus(com.webliix.finance.enums.InvoiceStatus.PAID);
+        long overdue = invoiceRepository.countByStatus(com.webliix.finance.enums.InvoiceStatus.OVERDUE);
+        long pending = invoiceRepository.countByStatusNot(com.webliix.finance.enums.InvoiceStatus.PAID);
+        BigDecimal revenue = invoiceRepository.sumTotalAmount();
 
         InvoiceDashboardResponse response = new InvoiceDashboardResponse();
         response.setTotalInvoices(total);
         response.setPaidInvoices(paid);
         response.setOverdueInvoices(overdue);
         response.setPendingInvoices(pending);
-        response.setTotalRevenue(revenue);
+        response.setTotalRevenue(revenue != null ? revenue : BigDecimal.ZERO);
         return response;
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = {"invoiceDashboard", "revenueStatistics"}, allEntries = true)
     public InvoiceResponse recordPayment(Long invoiceId, com.webliix.finance.dto.RecordPaymentRequest req) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found with id: " + invoiceId));
