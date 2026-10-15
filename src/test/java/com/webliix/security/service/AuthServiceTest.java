@@ -56,6 +56,9 @@ class AuthServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private UserPermissionCacheService userPermissionCacheService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -85,8 +88,8 @@ class AuthServiceTest {
         String result = authService.forgotPassword(request);
 
         assertNotNull(result);
-        assertTrue(result.contains("If an account with that email exists"));
-        verify(rateLimiterService).checkRateLimit(eq("forgot-password:john@webliix.com"), eq(3), eq(3600L), eq("forgot password"));
+        assertTrue(result.contains("A 6-digit verification code has been sent to"));
+        verify(rateLimiterService).checkRateLimit(eq("forgot-password:john@webliix.com"), eq(5), eq(3600L), eq("forgot password"));
         verify(otpService).generateAndStoreOtp(OtpService.PREFIX_PASSWORD_RESET, "john@webliix.com");
         verify(emailService).sendForgotPasswordOtpEmail(eq("john@webliix.com"), eq("John"), eq("123456"), eq(5));
     }

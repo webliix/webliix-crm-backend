@@ -311,6 +311,7 @@ DO $$
 DECLARE
     v_role_id BIGINT;
     v_perm_id BIGINT;
+    v_client_role_id BIGINT;
     r RECORD;
 BEGIN
     -- === 11.A ACCOUNTS ROLE ===
@@ -486,20 +487,30 @@ BEGIN
         END LOOP;
     END IF;
 
+   
     -- === 11.I USER / CLIENT ROLE ===
-    FOR r IN
-        SELECT id AS rid FROM roles WHERE name IN ('USER', 'CLIENT')
+    FOR v_client_role_id IN
+        SELECT id FROM roles WHERE name IN ('USER', 'CLIENT')
     LOOP
         FOR r IN
             SELECT unnest(ARRAY[
-                'CLIENT_PORTAL_ACCESS', 'INVOICES_VIEW', 'QUOTATIONS_VIEW', 'PROJECTS_VIEW', 'TICKETS_VIEW', 'TICKETS_CREATE'
+                'CLIENT_PORTAL_ACCESS',
+                'INVOICES_VIEW',
+                'QUOTATIONS_VIEW',
+                'PROJECTS_VIEW',
+                'TICKETS_VIEW',
+                'TICKETS_CREATE'
             ]) AS code, 'OWN' AS scope
         LOOP
-            SELECT id INTO v_perm_id FROM permissions WHERE code = r.code;
+            SELECT id INTO v_perm_id
+            FROM permissions
+            WHERE code = r.code;
+
             IF v_perm_id IS NOT NULL THEN
                 INSERT INTO role_permissions (role_id, permission_id, scope)
-                VALUES (r.rid, v_perm_id, r.scope)
-                ON CONFLICT (role_id, permission_id) DO UPDATE SET scope = EXCLUDED.scope;
+                VALUES (v_client_role_id, v_perm_id, r.scope)
+                ON CONFLICT (role_id, permission_id)
+                DO UPDATE SET scope = EXCLUDED.scope;
             END IF;
         END LOOP;
     END LOOP;

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@WithMockUser(username = "admin@webliix.com", authorities = {"SUPER_ADMIN", "LEADS_CREATE", "LEADS_VIEW", "LEADS_EDIT", "LEADS_CONVERT"})
 public class LeadWorkflowIntegrationTest {
 
     @Autowired
