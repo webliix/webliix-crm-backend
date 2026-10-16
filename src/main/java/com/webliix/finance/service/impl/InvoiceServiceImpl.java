@@ -340,14 +340,19 @@ public class InvoiceServiceImpl implements InvoiceService {
         long paid = invoiceRepository.countByStatus(com.webliix.finance.enums.InvoiceStatus.PAID);
         long overdue = invoiceRepository.countByStatus(com.webliix.finance.enums.InvoiceStatus.OVERDUE);
         long pending = invoiceRepository.countByStatusNot(com.webliix.finance.enums.InvoiceStatus.PAID);
-        BigDecimal revenue = invoiceRepository.sumTotalAmount();
+        BigDecimal totalAmount = invoiceRepository.sumTotalAmount();
+        BigDecimal paidAmount = invoiceRepository.sumPaidAmount();
+        BigDecimal pendingAmount = invoiceRepository.sumPendingAmount();
 
         InvoiceDashboardResponse response = new InvoiceDashboardResponse();
         response.setTotalInvoices(total);
         response.setPaidInvoices(paid);
         response.setOverdueInvoices(overdue);
         response.setPendingInvoices(pending);
-        response.setTotalRevenue(revenue != null ? revenue : BigDecimal.ZERO);
+        response.setTotalRevenue(totalAmount != null ? totalAmount : BigDecimal.ZERO);
+        response.setTotalAmount(totalAmount != null ? totalAmount : BigDecimal.ZERO);
+        response.setPaidAmount(paidAmount != null ? paidAmount : BigDecimal.ZERO);
+        response.setPendingAmount(pendingAmount != null ? pendingAmount : BigDecimal.ZERO);
         return response;
     }
 

@@ -11,4 +11,7 @@ public class InvoiceDashboardResponse {
     private Long overdueInvoices;
     private Long pendingInvoices;
     private BigDecimal totalRevenue;
+    private BigDecimal totalAmount;
+    private BigDecimal paidAmount;
+    private BigDecimal pendingAmount;
 }
