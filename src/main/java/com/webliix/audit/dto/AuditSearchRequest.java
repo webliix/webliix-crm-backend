@@ -18,6 +18,7 @@ public class AuditSearchRequest {
     private String status;
     private String entityType;
     private String entityId;
+    private String keyword;
     private Integer page = 0;
     private Integer size = 25;
 }

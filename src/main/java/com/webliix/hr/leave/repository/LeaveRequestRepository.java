@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
     Page<LeaveRequest> findAllByStatus(LeaveStatus status, Pageable pageable);
+    java.util.List<LeaveRequest> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+    Page<LeaveRequest> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId, Pageable pageable);
 }

@@ -89,5 +89,25 @@ public class AuditController {
                 .build();
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping({"/audit/logs/{id}", "/audit/{id}", "/audit-logs/{id}"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "SETTINGS_MANAGE"})
+    public ResponseEntity<ApiResponse<Void>> deleteAuditLog(@PathVariable Long id) {
+        auditService.deleteLog(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Audit log deleted successfully")
+                .build());
+    }
+
+    @DeleteMapping({"/audit/logs", "/audit/logs/clear", "/audit/clear"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "SETTINGS_MANAGE"})
+    public ResponseEntity<ApiResponse<Void>> clearAuditLogs(@RequestParam(required = false) Integer olderThanDays) {
+        auditService.clearLogs(olderThanDays);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Audit logs cleared successfully")
+                .build());
+    }
 }
 

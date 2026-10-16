@@ -110,6 +110,18 @@ public class AuditService {
         auditLogRepository.deleteByCreatedAtBefore(LocalDateTime.now().minusDays(days));
     }
 
+    public void deleteLog(Long id) {
+        auditLogRepository.deleteById(id);
+    }
+
+    public void clearLogs(Integer olderThanDays) {
+        if (olderThanDays != null && olderThanDays > 0) {
+            auditLogRepository.deleteByCreatedAtBefore(LocalDateTime.now().minusDays(olderThanDays));
+        } else {
+            auditLogRepository.deleteAll();
+        }
+    }
+
     private String resolveUsername(HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated() && authentication.getName() != null) {
@@ -203,6 +215,16 @@ public class AuditService {
             }
             if (StringUtils.hasText(request.getEntityId())) {
                 predicates.add(criteriaBuilder.equal(root.get("entityId"), request.getEntityId()));
+            }
+            if (StringUtils.hasText(request.getKeyword())) {
+                String kw = "%" + request.getKeyword().trim().toLowerCase() + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), kw),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("entityType")), kw),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("entityId")), kw),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("ipAddress")), kw),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), kw)
+                ));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

@@ -3,46 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Inquiry Confirmation | Webliix</title>
-    <style>
-        body { font-family: 'Inter', Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #0f172a; }
-        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .header { background: #07111F; padding: 28px 24px; text-align: center; }
-        .header h1 { color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-        .header span { color: #38bdf8; }
-        .body { padding: 32px 28px; font-size: 15px; line-height: 1.6; }
-        .badge { display: inline-block; background-color: #e0e7ff; color: #4338ca; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 12px; }
-        .box { background: #f1f5f9; border-left: 4px solid #2563eb; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; }
-        .box p { margin: 4px 0; }
-        .footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 24px; text-align: center; font-size: 12px; color: #64748b; }
-        .footer a { color: #2563eb; text-decoration: none; }
-    </style>
+    <title>Inquiry Confirmation - Webliix</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>WEBLIIX<span>.</span></h1>
-        </div>
-        <div class="body">
-            <span class="badge">Inquiry Received</span>
-            <h2 style="margin-top: 0; font-size: 20px; color: #0f172a;">Hello {{NAME}},</h2>
-            <p>Thank you for reaching out to <strong>Webliix</strong>. We have received your project inquiry and our engineering team has begun reviewing your requirements.</p>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #0f172a; padding: 24px 32px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Webliix <span style="color: #0ea5e9;">Hub</span></h1>
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 32px;">
+                            <div style="display: inline-block; background-color: #f0f9ff; color: #0284c7; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 12px;">Inquiry Received</div>
+                            <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Hello {{NAME}},</h2>
+                            <p style="margin: 0 0 20px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Thank you for reaching out to <strong>Webliix</strong>. We have received your inquiry and our engineering team has begun reviewing your project requirements.</p>
 
-            <div class="box">
-                <p><strong>Service Requested:</strong> {{SERVICE}}</p>
-                <p><strong>Company / Business:</strong> {{COMPANY}}</p>
-                <p><strong>Requirements:</strong> "{{REQUIREMENTS}}"</p>
-            </div>
+                            <div style="background-color: #f8fafc; border-left: 4px solid #0284c7; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px;">
+                                <p style="margin: 4px 0; color: #334155;"><strong>Service Requested:</strong> {{SERVICE}}</p>
+                                <p style="margin: 4px 0; color: #334155;"><strong>Company / Business:</strong> {{COMPANY}}</p>
+                                <p style="margin: 4px 0; color: #334155;"><strong>Requirements:</strong> "{{REQUIREMENTS}}"</p>
+                            </div>
 
-            <p>Our solutions architect will review your project details and respond within <strong>2 business hours</strong>.</p>
-            <p>If you need to discuss urgent details or share attachments, feel free to reply directly to <a href="mailto:contact@webliix.com" style="color: #2563eb;">contact@webliix.com</a>.</p>
+                            <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Our solutions architect will review your project details and follow up with you promptly.</p>
+                            <p style="margin: 0 0 24px 0; color: #64748b; font-size: 14px; line-height: 1.6;">If you have immediate questions or documents to share, feel free to contact us at <a href="mailto:contact@webliix.com" style="color: #0284c7; text-decoration: none; font-weight: 600;">contact@webliix.com</a>.</p>
 
-            <p style="margin-top: 28px;">Best regards,<br><strong>Webliix Engineering & Solutions Team</strong></p>
-        </div>
-        <div class="footer">
-            <p>This is an automated acknowledgment sent from <strong>noreply@webliix.com</strong>.</p>
-            <p>© 2026 Webliix Media & Software Solutions. All rights reserved. | <a href="https://webliix.com">webliix.com</a></p>
-        </div>
-    </div>
+                            <p style="margin: 0; color: #334155; font-size: 14px; font-weight: 600;">Webliix Solutions & Engineering Team</p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 600;">Webliix • Enterprise Digital Platform</p>
+                            <p style="margin: 0; color: #94a3b8; font-size: 11px;">noreply@webliix.com • &lt; Your Success is our Code /&gt;</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

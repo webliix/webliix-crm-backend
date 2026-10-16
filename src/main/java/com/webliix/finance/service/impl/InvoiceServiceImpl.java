@@ -289,8 +289,19 @@ public class InvoiceServiceImpl implements InvoiceService {
             updated.setPaidAmount(BigDecimal.ZERO);
         }
 
-        if (updated.getTotalAmount() != null) {
-            BigDecimal pending = updated.getTotalAmount().subtract(updated.getPaidAmount());
+        if (updated.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID) {
+            if (updated.getPaidAmount() == null || updated.getPaidAmount().compareTo(BigDecimal.ZERO) == 0) {
+                updated.setPaidAmount(updated.getTotalAmount());
+            }
+            updated.setPendingAmount(BigDecimal.ZERO);
+            if (updated.getTransactionReference() == null) {
+                updated.setTransactionReference("TXN-" + updated.getInvoiceNumber());
+            }
+            if (updated.getPaidDate() == null) {
+                updated.setPaidDate(java.time.LocalDate.now());
+            }
+        } else if (updated.getTotalAmount() != null) {
+            BigDecimal pending = updated.getTotalAmount().subtract(updated.getPaidAmount() != null ? updated.getPaidAmount() : BigDecimal.ZERO);
             updated.setPendingAmount(pending.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : pending);
         }
 
@@ -380,6 +391,9 @@ public class InvoiceServiceImpl implements InvoiceService {
             invoice.setPendingAmount(pending);
             invoice.setStatus(com.webliix.finance.enums.InvoiceStatus.PARTIALLY_PAID);
         }
+        invoice.setTransactionReference(req.getReferenceNumber() != null && !req.getReferenceNumber().isBlank() ? req.getReferenceNumber() : ("TXN-" + invoice.getInvoiceNumber()));
+        invoice.setPaymentMethod(req.getPaymentMethod() != null ? req.getPaymentMethod() : "BANK_TRANSFER");
+        invoice.setPaidDate(req.getPaymentDate() != null ? req.getPaymentDate() : java.time.LocalDate.now());
         invoice.setUpdatedAt(LocalDateTime.now());
         Invoice updatedInvoice = invoiceRepository.save(invoice);
 

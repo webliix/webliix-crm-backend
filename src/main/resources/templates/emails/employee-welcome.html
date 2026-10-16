@@ -1,54 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Welcome to Webliix - Your Employee Credentials</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Webliix Hub - Employee Credentials</title>
 </head>
-<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0;">
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 32px 24px; text-align: center;">
-            <img src="https://res.cloudinary.com/vhth8clt/image/upload/v1788210409/logo.png" alt="Webliix" style="height: 40px; margin-bottom: 12px;" />
-            <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700;">Welcome to Webliix</h1>
-            <p style="color: #94a3b8; font-size: 14px; margin: 6px 0 0;">Your Employee Account Has Been Created</p>
-        </div>
-        <div style="padding: 32px 28px;">
-            <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Dear <strong>{{NAME}}</strong>,</p>
-            <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px;">
-                An official employee account has been created for you on the Webliix Platform. You can now log in to the Employee Portal to view your assigned projects, submit daily work logs, and manage project billings.
-            </p>
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-                <p style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0 0 14px; letter-spacing: 0.05em;">Your Login Credentials</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                    <!-- Header -->
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b; width: 140px;"><strong>Employee Code:</strong></td>
-                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{{EMPLOYEE_CODE}}</td>
+                        <td style="background-color: #0f172a; padding: 24px 32px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Webliix <span style="color: #6366f1;">Hub</span></h1>
+                        </td>
                     </tr>
+                    <!-- Content -->
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;"><strong>Portal URL:</strong></td>
-                        <td style="padding: 6px 0;"><a href="https://employee.webliix.com" style="color: #6366f1; text-decoration: none; font-weight: 600;">https://employee.webliix.com</a></td>
+                        <td style="padding: 32px;">
+                            <div style="display: inline-block; background-color: #eef2ff; color: #4f46e5; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 12px;">Employee Portal Access</div>
+                            <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Welcome to the Team</h2>
+                            <p style="margin: 0 0 20px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Dear <strong>{{NAME}}</strong>,</p>
+                            <p style="margin: 0 0 24px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Your official employee account has been created on Webliix Hub. You can now sign in to view your projects, submit daily work logs, request leave, review payroll slips, and track assigned tickets.</p>
+
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; width: 140px;"><strong>Employee Code:</strong></td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">{{EMPLOYEE_CODE}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Portal URL:</strong></td>
+                                        <td style="padding: 8px 0;"><a href="https://employee.webliix.com" style="color: #6366f1; text-decoration: none; font-weight: 600;">https://employee.webliix.com</a></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Login Email:</strong></td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">{{EMAIL}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Password:</strong></td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-family: monospace; font-size: 14px; font-weight: 700; background-color: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block;">{{PASSWORD}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div style="text-align: center; margin: 32px 0 24px;">
+                                <a href="https://employee.webliix.com" style="background-color: #6366f1; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+                                    Sign In to Employee Portal
+                                </a>
+                            </div>
+
+                            <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">Please update your temporary password after logging in for the first time.</p>
+                        </td>
                     </tr>
+                    <!-- Footer -->
                     <tr>
-                        <td style="padding: 6px 0; color: #64748b;"><strong>Login Email:</strong></td>
-                        <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">{{EMAIL}}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px 0; color: #64748b;"><strong>Password:</strong></td>
-                        <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-size: 15px; font-weight: 700; background-color: #e2e8f0; padding: 4px 8px; border-radius: 4px; display: inline-block;">{{PASSWORD}}</td>
+                        <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 600;">Webliix Hub • People & Culture Operations</p>
+                            <p style="margin: 0; color: #94a3b8; font-size: 11px;">noreply@webliix.com • &lt; Your Success is our Code /&gt;</p>
+                        </td>
                     </tr>
                 </table>
-            </div>
-            <div style="text-align: center; margin: 32px 0 24px;">
-                <a href="https://employee.webliix.com" style="background-color: #6366f1; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
-                    Log In to Employee Portal
-                </a>
-            </div>
-            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0;">
-                <em>Security Notice:</em> For your account security, please log in and change your password upon your first sign in.
-            </p>
-        </div>
-        <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-            <p style="margin: 0;">This is an automated dispatch from noreply@webliix.com • Webliix Technologies</p>
-        </div>
-    </div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

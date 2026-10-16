@@ -8,7 +8,7 @@ public class CreateProjectCommentRequest {
     private Long authorId;
     private String authorName;
     private String authorRole;
-    @com.fasterxml.jackson.annotation.JsonAlias({"comment", "message"})
+    @com.fasterxml.jackson.annotation.JsonAlias({"comment", "message", "content", "text", "note", "updateNote"})
     private String message;
 
     public String getComment() {

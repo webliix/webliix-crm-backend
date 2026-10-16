@@ -41,10 +41,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i")
     BigDecimal sumTotalAmount();
 
-    @Query("SELECT COALESCE(SUM(i.paidAmount), 0) FROM Invoice i")
+    @Query("SELECT COALESCE(SUM(CASE WHEN i.status = com.webliix.finance.enums.InvoiceStatus.PAID THEN COALESCE(NULLIF(i.paidAmount, 0), i.totalAmount) ELSE COALESCE(i.paidAmount, 0) END), 0) FROM Invoice i")
     BigDecimal sumPaidAmount();
 
-    @Query("SELECT COALESCE(SUM(i.pendingAmount), 0) FROM Invoice i")
+    @Query("SELECT COALESCE(SUM(CASE WHEN i.status = com.webliix.finance.enums.InvoiceStatus.PAID THEN 0 ELSE (CASE WHEN i.pendingAmount IS NOT NULL AND i.pendingAmount > 0 THEN i.pendingAmount ELSE (CASE WHEN (i.totalAmount - COALESCE(i.paidAmount, 0)) > 0 THEN (i.totalAmount - COALESCE(i.paidAmount, 0)) ELSE 0 END) END) END), 0) FROM Invoice i")
     BigDecimal sumPendingAmount();
 
     @Query("SELECT EXTRACT(MONTH FROM i.issueDate), COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.issueDate IS NOT NULL GROUP BY EXTRACT(MONTH FROM i.issueDate)")

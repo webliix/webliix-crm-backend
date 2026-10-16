@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Page<Attendance> findByEmployeeId(Long employeeId, Pageable pageable);
+    java.util.List<Attendance> findByEmployeeIdOrderByAttendanceDateDesc(Long employeeId);
+    java.util.Optional<Attendance> findByEmployeeIdAndAttendanceDate(Long employeeId, java.time.LocalDate attendanceDate);
 }

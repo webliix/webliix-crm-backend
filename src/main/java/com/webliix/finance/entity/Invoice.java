@@ -61,6 +61,15 @@ public class Invoice {
     @Enumerated(EnumType.STRING)
     private InvoiceStatus status;
 
+    @Column(name = "transaction_reference")
+    private String transactionReference;
+
+    @Column(name = "payment_method")
+    private String paymentMethod;
+
+    @Column(name = "paid_date")
+    private LocalDate paidDate;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

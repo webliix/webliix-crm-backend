@@ -20,6 +20,18 @@ import com.webliix.shared.response.ApiResponse;
 import com.webliix.tickets.dto.TicketResponse;
 import com.webliix.tickets.mapper.TicketMapper;
 import com.webliix.tickets.repository.TicketRepository;
+import com.webliix.hr.attendance.entity.Attendance;
+import com.webliix.hr.attendance.enums.AttendanceStatus;
+import com.webliix.hr.attendance.repository.AttendanceRepository;
+import com.webliix.hr.leave.dto.LeaveRequestDto;
+import com.webliix.hr.leave.entity.LeaveBalance;
+import com.webliix.hr.leave.entity.LeaveRequest;
+import com.webliix.hr.leave.enums.LeaveStatus;
+import com.webliix.hr.leave.enums.LeaveType;
+import com.webliix.hr.leave.repository.LeaveBalanceRepository;
+import com.webliix.hr.leave.repository.LeaveRequestRepository;
+import com.webliix.hr.worklog.repository.WorkLogRepository;
+import com.webliix.security.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,8 +41,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -46,6 +60,11 @@ public class EmployeeSelfController {
     private final TicketRepository ticketRepository;
     private final ExpenseService expenseService;
     private final PayrollService payrollService;
+    private final AttendanceRepository attendanceRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveBalanceRepository leaveBalanceRepository;
+    private final WorkLogRepository workLogRepository;
+    private final AuthService authService;
 
     private Employee resolveEmployee(Authentication auth) {
         if (auth == null || auth.getName() == null) {
@@ -168,6 +187,216 @@ public class EmployeeSelfController {
         Page<PayrollResponse> response = payrollService.getPayrollsForEmployee(employee.getId(), pageable);
         return ResponseEntity.ok(ApiResponse.<Page<PayrollResponse>>builder()
                 .success(true).message("Payslips fetched").data(response).build());
+    }
+
+    /**
+     * GET /api/v1/employee/me/attendance
+     * Returns attendance history and today's status for the current employee
+     */
+    @GetMapping("/attendance")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMyAttendance(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> todayRecord = attendanceRepository.findByEmployeeIdAndAttendanceDate(employee.getId(), today);
+        List<Attendance> recent = attendanceRepository.findByEmployeeIdOrderByAttendanceDateDesc(employee.getId())
+                .stream().limit(15).collect(Collectors.toList());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("today", todayRecord.orElse(null));
+        String status = todayRecord.map(a -> {
+            if (a.getCheckOutTime() != null) return "CLOCKED_OUT";
+            if (a.getCheckInTime() != null) return "CLOCKED_IN";
+            return a.getStatus() != null ? a.getStatus().name() : "PRESENT";
+        }).orElse("NOT_CLOCKED_IN");
+        data.put("status", status);
+        data.put("recent", recent);
+
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .success(true).message("Attendance records fetched").data(data).build());
+    }
+
+    /**
+     * POST /api/v1/employee/me/attendance/clock-in
+     * Records check-in for today
+     */
+    @PostMapping("/attendance/clock-in")
+    public ResponseEntity<ApiResponse<Attendance>> clockIn(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> existing = attendanceRepository.findByEmployeeIdAndAttendanceDate(employee.getId(), today);
+        Attendance att;
+        if (existing.isPresent()) {
+            att = existing.get();
+            if (att.getCheckInTime() == null) {
+                att.setCheckInTime(LocalDateTime.now());
+            }
+        } else {
+            att = new Attendance();
+            att.setEmployee(employee);
+            att.setAttendanceDate(today);
+            att.setCheckInTime(LocalDateTime.now());
+            att.setStatus(AttendanceStatus.PRESENT);
+        }
+        Attendance saved = attendanceRepository.save(att);
+        return ResponseEntity.ok(ApiResponse.<Attendance>builder()
+                .success(true).message("Clocked in successfully").data(saved).build());
+    }
+
+    /**
+     * POST /api/v1/employee/me/attendance/clock-out
+     * Records check-out for today and computes hours worked
+     */
+    @PostMapping("/attendance/clock-out")
+    public ResponseEntity<ApiResponse<Attendance>> clockOut(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        LocalDate today = LocalDate.now();
+        Attendance att = attendanceRepository.findByEmployeeIdAndAttendanceDate(employee.getId(), today)
+                .orElseThrow(() -> new IllegalStateException("You must clock in before clocking out."));
+        att.setCheckOutTime(LocalDateTime.now());
+        if (att.getCheckInTime() != null) {
+            long minutes = java.time.Duration.between(att.getCheckInTime(), att.getCheckOutTime()).toMinutes();
+            att.setWorkingHours(minutes / 60.0);
+        }
+        Attendance saved = attendanceRepository.save(att);
+        return ResponseEntity.ok(ApiResponse.<Attendance>builder()
+                .success(true).message("Clocked out successfully").data(saved).build());
+    }
+
+    /**
+     * GET /api/v1/employee/me/leaves
+     * Returns submitted leave requests
+     */
+    @GetMapping("/leaves")
+    public ResponseEntity<ApiResponse<List<LeaveRequest>>> getMyLeaves(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        List<LeaveRequest> list = leaveRequestRepository.findByEmployeeIdOrderByCreatedAtDesc(employee.getId());
+        return ResponseEntity.ok(ApiResponse.<List<LeaveRequest>>builder()
+                .success(true).message("Leave requests fetched").data(list).build());
+    }
+
+    /**
+     * POST /api/v1/employee/me/leaves
+     * Submits a new leave request
+     */
+    @PostMapping("/leaves")
+    public ResponseEntity<ApiResponse<LeaveRequest>> applyLeave(@RequestBody LeaveRequestDto request, Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        LeaveRequest lr = LeaveRequest.builder()
+                .employee(employee)
+                .leaveType(request.getLeaveType() != null ? request.getLeaveType() : LeaveType.CASUAL)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .reason(request.getReason())
+                .status(LeaveStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        LeaveRequest saved = leaveRequestRepository.save(lr);
+        return ResponseEntity.ok(ApiResponse.<LeaveRequest>builder()
+                .success(true).message("Leave application submitted").data(saved).build());
+    }
+
+    /**
+     * GET /api/v1/employee/me/leave-balances
+     * Returns employee leave quotas and remaining days
+     */
+    @GetMapping("/leave-balances")
+    public ResponseEntity<ApiResponse<List<LeaveBalance>>> getMyLeaveBalances(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        List<LeaveBalance> balances = leaveBalanceRepository.findByEmployee(employee);
+        if (balances.isEmpty()) {
+            balances = List.of(
+                    LeaveBalance.builder().employee(employee).leaveType(LeaveType.ANNUAL).allocationDays(BigDecimal.valueOf(18)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(18)).updatedAt(LocalDateTime.now()).build(),
+                    LeaveBalance.builder().employee(employee).leaveType(LeaveType.SICK).allocationDays(BigDecimal.valueOf(12)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(12)).updatedAt(LocalDateTime.now()).build(),
+                    LeaveBalance.builder().employee(employee).leaveType(LeaveType.CASUAL).allocationDays(BigDecimal.valueOf(10)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(10)).updatedAt(LocalDateTime.now()).build()
+            );
+            balances = leaveBalanceRepository.saveAll(balances);
+        }
+        return ResponseEntity.ok(ApiResponse.<List<LeaveBalance>>builder()
+                .success(true).message("Leave balances fetched").data(balances).build());
+    }
+
+    /**
+     * GET /api/v1/employee/me/dashboard
+     * Returns consolidated employee dashboard metrics, compensation, attendance, and granted permissions
+     */
+    @GetMapping("/dashboard")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboard(Authentication auth) {
+        Employee employee = resolveEmployee(auth);
+        Map<String, Object> data = new HashMap<>();
+
+        // Profile (includes basic salary, designation, department)
+        data.put("profile", toResponse(employee));
+
+        // Granted Permissions & Roles from user
+        try {
+            var userProfile = authService.getCurrentUser(auth.getName());
+            data.put("permissions", userProfile.getPermissions());
+            data.put("roles", userProfile.getRoles());
+        } catch (Exception ex) {
+            data.put("permissions", Collections.emptySet());
+            data.put("roles", Collections.emptySet());
+        }
+
+        // Project counts
+        try {
+            Set<Long> candidateIds = new HashSet<>();
+            if (employee.getUser() != null) candidateIds.add(employee.getUser().getId());
+            if (employee.getId() != null) candidateIds.add(employee.getId());
+            long projectCount = projectMemberRepository.findByUserIdIn(candidateIds).stream()
+                    .map(pm -> pm.getProjectId()).distinct().count();
+            data.put("projectsCount", projectCount);
+        } catch (Exception ex) {
+            data.put("projectsCount", 0);
+        }
+
+        // Tickets count
+        try {
+            long openTicketCount = ticketRepository.findByAssignedToId(employee.getId()).stream()
+                    .filter(t -> t.getStatus() != null && ("OPEN".equalsIgnoreCase(t.getStatus().name()) || "IN_PROGRESS".equalsIgnoreCase(t.getStatus().name())))
+                    .count();
+            data.put("openTicketsCount", openTicketCount);
+        } catch (Exception ex) {
+            data.put("openTicketsCount", 0);
+        }
+
+        // Worklogs count
+        try {
+            long workLogCount = workLogRepository.findByEmployeeId(employee.getId(), PageRequest.of(0, 1)).getTotalElements();
+            data.put("workLogsCount", workLogCount);
+        } catch (Exception ex) {
+            data.put("workLogsCount", 0);
+        }
+
+        // Today's attendance
+        LocalDate today = LocalDate.now();
+        Optional<Attendance> todayRecord = attendanceRepository.findByEmployeeIdAndAttendanceDate(employee.getId(), today);
+        data.put("todayAttendance", todayRecord.orElse(null));
+        String attStatus = todayRecord.map(a -> {
+            if (a.getCheckOutTime() != null) return "CLOCKED_OUT";
+            if (a.getCheckInTime() != null) return "CLOCKED_IN";
+            return a.getStatus() != null ? a.getStatus().name() : "PRESENT";
+        }).orElse("NOT_CLOCKED_IN");
+        data.put("todayAttendanceStatus", attStatus);
+
+        // Leave balances
+        try {
+            List<LeaveBalance> balances = leaveBalanceRepository.findByEmployee(employee);
+            if (balances.isEmpty()) {
+                balances = List.of(
+                        LeaveBalance.builder().employee(employee).leaveType(LeaveType.ANNUAL).allocationDays(BigDecimal.valueOf(18)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(18)).updatedAt(LocalDateTime.now()).build(),
+                        LeaveBalance.builder().employee(employee).leaveType(LeaveType.SICK).allocationDays(BigDecimal.valueOf(12)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(12)).updatedAt(LocalDateTime.now()).build(),
+                        LeaveBalance.builder().employee(employee).leaveType(LeaveType.CASUAL).allocationDays(BigDecimal.valueOf(10)).usedDays(BigDecimal.ZERO).remainingDays(BigDecimal.valueOf(10)).updatedAt(LocalDateTime.now()).build()
+                );
+                balances = leaveBalanceRepository.saveAll(balances);
+            }
+            data.put("leaveBalances", balances);
+        } catch (Exception ex) {
+            data.put("leaveBalances", Collections.emptyList());
+        }
+
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .success(true).message("Employee dashboard fetched").data(data).build());
     }
 
     private EmployeeResponse toResponse(Employee employee) {

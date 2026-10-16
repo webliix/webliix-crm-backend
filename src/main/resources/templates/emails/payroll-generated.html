@@ -1,34 +1,69 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <style>
-        body { font-family: Arial, sans-serif; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; }
-        .header { background-color: #20c997; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-        .content { background-color: #f8f9fa; padding: 20px; }
-        .footer { background-color: #e9ecef; padding: 10px; text-align: center; font-size: 12px; border-radius: 0 0 5px 5px; }
-        .button { background-color: #20c997; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Slip Available - Webliix Hub</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Payroll Generated</h1>
-        </div>
-        <div class="content">
-            <p>Your payroll has been generated and is ready for processing.</p>
-            <p><strong>Payroll Details:</strong></p>
-            <ul>
-                <li>Period: [PERIOD]</li>
-                <li>Gross Amount: [GROSS_AMOUNT]</li>
-                <li>Deductions: [DEDUCTIONS]</li>
-                <li>Net Amount: [NET_AMOUNT]</li>
-                <li>Status: [STATUS]</li>
-            </ul>
-            <a href="https://webliix.com/payroll/[PAYROLL_ID]" class="button">View Payroll</a>
-        </div>
-        <div class="footer">
-            <p>&copy; 2026 Webliix. All rights reserved.</p>
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #0f172a; padding: 24px 32px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Webliix <span style="color: #8b5cf6;">Hub</span></h1>
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 32px;">
+                            <div style="display: inline-block; background-color: #f5f3ff; color: #7c3aed; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; text-transform: uppercase; margin-bottom: 12px;">HR & Payroll</div>
+                            <h2 style="margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 700;">Monthly Salary Slip Generated</h2>
+                            <p style="margin: 0 0 20px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Hello <strong>{{EMPLOYEE_NAME}}</strong>,</p>
+                            <p style="margin: 0 0 24px 0; color: #64748b; font-size: 14px; line-height: 1.6;">Your salary slip for <strong>[PERIOD]{{MONTH}} {{YEAR}}</strong> has been processed and is ready for your records. Breakdown below:</p>
+
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b; width: 140px;"><strong>Gross Amount:</strong></td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">[GROSS_AMOUNT]</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Deductions:</strong></td>
+                                        <td style="padding: 8px 0; color: #ef4444; font-weight: 600;">[DEDUCTIONS]</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Net Salary:</strong></td>
+                                        <td style="padding: 8px 0; color: #7c3aed; font-weight: 700; font-size: 16px;">[NET_AMOUNT]{{NET_SALARY}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #64748b;"><strong>Status:</strong></td>
+                                        <td style="padding: 8px 0; color: #0f172a; font-weight: 600;">[STATUS]</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div style="text-align: center; margin: 32px 0 24px;">
+                                <a href="https://employee.webliix.com" style="background-color: #7c3aed; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+                                    View Slip in Employee Portal
+                                </a>
+                            </div>
+
+                            <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.5;">For questions regarding payroll breakdown, contact the HR department via the employee portal.</p>
+                        </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 600;">Webliix Hub • HR & Payroll Operations</p>
+                            <p style="margin: 0; color: #94a3b8; font-size: 11px;">noreply@webliix.com • &lt; Your Success is our Code /&gt;</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

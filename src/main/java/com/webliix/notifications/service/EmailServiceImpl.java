@@ -18,7 +18,7 @@ public class EmailServiceImpl implements EmailService {
     private final com.webliix.notifications.repository.EmailTemplateRepository emailTemplateRepository;
     private final com.webliix.settings.service.SettingsCacheService settingsCacheService;
 
-    @Value("${mail.automated.from:${mail.contact.from:contact@webliix.com}}")
+    @Value("${mail.automated.from:noreply@webliix.com}")
     private String automatedFromEmail;
 
     @Value("${mail.automated.from-name:Webliix Team}")

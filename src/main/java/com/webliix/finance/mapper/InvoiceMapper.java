@@ -55,6 +55,8 @@ public class InvoiceMapper {
     }
 
     public static InvoiceResponse toResponse(Invoice invoice) {
+        BigDecimal total = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal paid = invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO;
         InvoiceResponse res = new InvoiceResponse();
         res.setId(invoice.getId());
         res.setInvoiceNumber(invoice.getInvoiceNumber());
@@ -73,10 +75,31 @@ public class InvoiceMapper {
         res.setSubtotal(invoice.getSubtotal());
         res.setTaxAmount(invoice.getTaxAmount());
         res.setDiscountAmount(invoice.getDiscountAmount());
-        res.setTotalAmount(invoice.getTotalAmount());
-        res.setPaidAmount(invoice.getPaidAmount());
-        res.setPendingAmount(invoice.getPendingAmount());
+        res.setTotalAmount(total);
+        if (invoice.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID) {
+            if (paid.compareTo(BigDecimal.ZERO) == 0 && total.compareTo(BigDecimal.ZERO) > 0) {
+                paid = total;
+            }
+            res.setPaidAmount(paid);
+            res.setPendingAmount(BigDecimal.ZERO);
+        } else {
+            BigDecimal pending = invoice.getPendingAmount();
+            if (pending == null) {
+                pending = total.subtract(paid);
+            }
+            if (pending.compareTo(BigDecimal.ZERO) < 0) {
+                pending = BigDecimal.ZERO;
+            }
+            res.setPaidAmount(paid);
+            res.setPendingAmount(pending);
+        }
         res.setStatus(invoice.getStatus());
+        res.setTransactionReference(invoice.getTransactionReference() != null ? invoice.getTransactionReference() : 
+                (invoice.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID ? "TXN-" + invoice.getInvoiceNumber() : null));
+        res.setPaymentMethod(invoice.getPaymentMethod() != null ? invoice.getPaymentMethod() : 
+                (invoice.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID ? "BANK_TRANSFER" : null));
+        res.setPaidDate(invoice.getPaidDate() != null ? invoice.getPaidDate() : 
+                (invoice.getStatus() == com.webliix.finance.enums.InvoiceStatus.PAID ? (invoice.getUpdatedAt() != null ? invoice.getUpdatedAt().toLocalDate() : invoice.getIssueDate()) : null));
         res.setNotes(invoice.getNotes());
         try {
             if (invoice.getItems() != null && org.hibernate.Hibernate.isInitialized(invoice.getItems())) {

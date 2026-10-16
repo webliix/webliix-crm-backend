@@ -222,8 +222,9 @@ public class ProjectMapper {
         response.setTaskId(comment.getTaskId());
         response.setAuthorId(comment.getAuthorId());
         response.setAuthorName(comment.getAuthorName());
-        response.setAuthorRole(comment.getAuthorRole());
-        response.setMessage(comment.getMessage());
+        String msg = comment.getMessage() != null ? comment.getMessage() : "";
+        response.setMessage(msg);
+        response.setComment(msg);
         response.setCreatedAt(comment.getCreatedAt());
         return response;
     }

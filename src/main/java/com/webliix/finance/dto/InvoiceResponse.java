@@ -27,6 +27,9 @@ public class InvoiceResponse {
     private BigDecimal paidAmount;
     private BigDecimal pendingAmount;
     private InvoiceStatus status;
+    private String transactionReference;
+    private String paymentMethod;
+    private LocalDate paidDate;
     private String notes;
     private List<InvoiceItemResponse> items;
     private LocalDateTime createdAt;
