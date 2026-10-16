@@ -393,6 +393,9 @@ public class AuthService {
                     if (item.getRequiredPermission() == null || item.getRequiredPermission().isBlank()) {
                         return true;
                     }
+                    if ("DASHBOARD_VIEW".equalsIgnoreCase(item.getRequiredPermission()) && principal.hasPermission("EMPLOYEE_PORTAL_ACCESS")) {
+                        return true;
+                    }
                     return principal.hasPermission(item.getRequiredPermission());
                 })
                 .collect(Collectors.toList());

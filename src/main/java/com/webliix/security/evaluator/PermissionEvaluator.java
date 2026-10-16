@@ -25,18 +25,40 @@ public class PermissionEvaluator {
         if (auth == null || !auth.isAuthenticated()) {
             return false;
         }
+        // 1. Super Admin and Admin roles always bypass all permission checks
+        boolean isPrivileged = auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority().toUpperCase();
+            return authName.equals("ROLE_SUPER_ADMIN") || authName.equals("SUPER_ADMIN")
+                    || authName.equals("ROLE_ADMIN") || authName.equals("ADMIN");
+        });
+        if (isPrivileged) {
+            return true;
+        }
+
         Object principal = auth.getPrincipal();
         if (principal instanceof WebliixPrincipal webliixPrincipal) {
             if (webliixPrincipal.isSuperAdmin()) {
                 return true;
             }
+            if (webliixPrincipal.getRoles() != null) {
+                for (String r : webliixPrincipal.getRoles()) {
+                    String norm = r.toUpperCase();
+                    if (norm.equals("SUPER_ADMIN") || norm.equals("ROLE_SUPER_ADMIN")
+                            || norm.equals("ADMIN") || norm.equals("ROLE_ADMIN")) {
+                        return true;
+                    }
+                }
+            }
             return webliixPrincipal.hasPermission(permissionCode);
         }
         // Fallback for standard authorities
         return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals(permissionCode)
-                        || a.getAuthority().equals("ROLE_SUPER_ADMIN")
-                        || a.getAuthority().equals("SUPER_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase(permissionCode)
+                        || a.getAuthority().equalsIgnoreCase("ROLE_" + permissionCode)
+                        || a.getAuthority().equalsIgnoreCase("ROLE_SUPER_ADMIN")
+                        || a.getAuthority().equalsIgnoreCase("SUPER_ADMIN")
+                        || a.getAuthority().equalsIgnoreCase("ROLE_ADMIN")
+                        || a.getAuthority().equalsIgnoreCase("ADMIN"));
     }
 
     public boolean hasAny(String... permissionCodes) {
@@ -51,10 +73,29 @@ public class PermissionEvaluator {
         if (auth == null || !auth.isAuthenticated()) {
             return null;
         }
+
+        boolean isPrivileged = auth.getAuthorities().stream().anyMatch(a -> {
+            String authName = a.getAuthority().toUpperCase();
+            return authName.equals("ROLE_SUPER_ADMIN") || authName.equals("SUPER_ADMIN")
+                    || authName.equals("ROLE_ADMIN") || authName.equals("ADMIN");
+        });
+        if (isPrivileged) {
+            return ScopeType.ALL;
+        }
+
         Object principal = auth.getPrincipal();
         if (principal instanceof WebliixPrincipal webliixPrincipal) {
             if (webliixPrincipal.isSuperAdmin()) {
                 return ScopeType.ALL;
+            }
+            if (webliixPrincipal.getRoles() != null) {
+                for (String r : webliixPrincipal.getRoles()) {
+                    String norm = r.toUpperCase();
+                    if (norm.equals("SUPER_ADMIN") || norm.equals("ROLE_SUPER_ADMIN")
+                            || norm.equals("ADMIN") || norm.equals("ROLE_ADMIN")) {
+                        return ScopeType.ALL;
+                    }
+                }
             }
             return webliixPrincipal.getPermissionScope(permissionCode);
         }

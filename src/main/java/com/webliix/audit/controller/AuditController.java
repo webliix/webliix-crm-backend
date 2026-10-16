@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.webliix.audit.dto.BatchDeleteAuditLogsRequest;
 import com.webliix.audit.dto.AuditDashboardResponse;
 import com.webliix.audit.dto.AuditLogResponse;
 import com.webliix.audit.dto.AuditSearchRequest;
@@ -19,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@RequirePermission("AUDIT_VIEW")
+@RequirePermission(anyOf = {"AUDIT_VIEW", "SUPER_ADMIN", "ADMIN"})
 public class AuditController {
 
     private final AuditService auditService;
@@ -91,7 +92,7 @@ public class AuditController {
     }
 
     @DeleteMapping({"/audit/logs/{id}", "/audit/{id}", "/audit-logs/{id}"})
-    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "SETTINGS_MANAGE"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "ADMIN", "SETTINGS_MANAGE"})
     public ResponseEntity<ApiResponse<Void>> deleteAuditLog(@PathVariable Long id) {
         auditService.deleteLog(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -100,8 +101,34 @@ public class AuditController {
                 .build());
     }
 
+    @PostMapping({"/audit/logs/batch-delete", "/audit/batch-delete"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "ADMIN", "SETTINGS_MANAGE"})
+    public ResponseEntity<ApiResponse<Void>> deleteAuditLogsBatch(
+            @RequestBody(required = false) BatchDeleteAuditLogsRequest request,
+            @RequestParam(name = "ids", required = false) List<Long> queryIds) {
+        List<Long> ids = request != null && request.getIds() != null ? request.getIds() : queryIds;
+        auditService.deleteLogs(ids);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Selected audit logs deleted successfully")
+                .build());
+    }
+
+    @DeleteMapping({"/audit/logs/batch", "/audit/batch"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "ADMIN", "SETTINGS_MANAGE"})
+    public ResponseEntity<ApiResponse<Void>> deleteAuditLogsBatchDelete(
+            @RequestBody(required = false) BatchDeleteAuditLogsRequest request,
+            @RequestParam(name = "ids", required = false) List<Long> queryIds) {
+        List<Long> ids = request != null && request.getIds() != null ? request.getIds() : queryIds;
+        auditService.deleteLogs(ids);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Selected audit logs deleted successfully")
+                .build());
+    }
+
     @DeleteMapping({"/audit/logs", "/audit/logs/clear", "/audit/clear"})
-    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "SETTINGS_MANAGE"})
+    @RequirePermission(anyOf = {"AUDIT_DELETE", "SUPER_ADMIN", "ADMIN", "SETTINGS_MANAGE"})
     public ResponseEntity<ApiResponse<Void>> clearAuditLogs(@RequestParam(required = false) Integer olderThanDays) {
         auditService.clearLogs(olderThanDays);
         return ResponseEntity.ok(ApiResponse.<Void>builder()

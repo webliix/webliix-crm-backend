@@ -114,6 +114,12 @@ public class AuditService {
         auditLogRepository.deleteById(id);
     }
 
+    public void deleteLogs(List<Long> ids) {
+        if (ids != null && !ids.isEmpty()) {
+            auditLogRepository.deleteAllById(ids);
+        }
+    }
+
     public void clearLogs(Integer olderThanDays) {
         if (olderThanDays != null && olderThanDays > 0) {
             auditLogRepository.deleteByCreatedAtBefore(LocalDateTime.now().minusDays(olderThanDays));
