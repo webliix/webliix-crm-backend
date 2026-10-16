@@ -23,4 +23,21 @@ public class PayrollResponse {
     private PayrollStatus status;
     private LocalDateTime processedAt;
     private LocalDateTime createdAt;
+
+    public String getEmployeeName() {
+        if (employee != null) {
+            String first = employee.getFirstName() != null ? employee.getFirstName() : "";
+            String last = employee.getLastName() != null ? employee.getLastName() : "";
+            return (first + " " + last).trim();
+        }
+        return null;
+    }
+
+    public String getEmployeeCode() {
+        return employee != null ? employee.getEmployeeCode() : null;
+    }
+
+    public BigDecimal getBasicSalary() {
+        return grossSalary;
+    }
 }

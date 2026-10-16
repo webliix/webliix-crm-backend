@@ -38,7 +38,7 @@ public class LeadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
         Page<LeadResponse> res = leadService.getAllLeads(pageable);
         return ResponseEntity.ok(ApiResponse.<Page<LeadResponse>>builder()
                 .success(true)
@@ -54,7 +54,7 @@ public class LeadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
         Page<LeadResponse> res = leadService.searchLeads(keyword, pageable);
         return ResponseEntity.ok(ApiResponse.<Page<LeadResponse>>builder()
                 .success(true)

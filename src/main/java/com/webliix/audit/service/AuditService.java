@@ -69,7 +69,11 @@ public class AuditService {
     }
 
     public Page<AuditLogResponse> search(AuditSearchRequest request) {
-        Pageable pageable = PageRequest.of(Math.max(0, Objects.requireNonNullElse(request.getPage(), 0)), Math.max(1, Objects.requireNonNullElse(request.getSize(), 25)));
+        Pageable pageable = PageRequest.of(
+                Math.max(0, Objects.requireNonNullElse(request.getPage(), 0)),
+                Math.max(1, Objects.requireNonNullElse(request.getSize(), 25)),
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
         Specification<AuditLog> specification = buildSpecification(request);
         return auditLogRepository.findAll(specification, pageable).map(this::mapToResponse);
     }

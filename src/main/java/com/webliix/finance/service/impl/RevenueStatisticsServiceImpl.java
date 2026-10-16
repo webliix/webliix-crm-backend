@@ -49,19 +49,24 @@ public class RevenueStatisticsServiceImpl implements RevenueStatisticsService {
     @Override
     @Cacheable(value = "revenueStatistics", key = "'monthly'")
     public List<MonthlyRevenueResponse> getMonthlyRevenue() {
-        List<Object[]> monthlyData = invoiceRepository.sumTotalAmountGroupByMonth();
         Map<Month, BigDecimal> monthlyTotals = new EnumMap<>(Month.class);
+        int currentYear = java.time.LocalDate.now().getYear();
 
-        if (monthlyData != null) {
-            for (Object[] row : monthlyData) {
-                if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
-                    int monthNumber = ((Number) row[0]).intValue();
-                    BigDecimal total = (BigDecimal) row[1];
-                    if (monthNumber >= 1 && monthNumber <= 12) {
-                        monthlyTotals.put(Month.of(monthNumber), total);
+        try {
+            List<Object[]> monthlyData = invoiceRepository.sumTotalAmountGroupByMonth();
+            if (monthlyData != null) {
+                for (Object[] row : monthlyData) {
+                    if (row != null && row.length >= 2 && row[0] != null && row[1] != null) {
+                        int monthNumber = ((Number) row[0]).intValue();
+                        BigDecimal total = (BigDecimal) row[1];
+                        if (monthNumber >= 1 && monthNumber <= 12) {
+                            monthlyTotals.put(Month.of(monthNumber), total);
+                        }
                     }
                 }
             }
+        } catch (Exception ex) {
+            // Graceful fallback: return initialized months with zero totals without breaking the UI
         }
 
         List<MonthlyRevenueResponse> responses = new ArrayList<>();
@@ -69,6 +74,7 @@ public class RevenueStatisticsServiceImpl implements RevenueStatisticsService {
             BigDecimal revenue = monthlyTotals.getOrDefault(month, BigDecimal.ZERO);
             MonthlyRevenueResponse response = new MonthlyRevenueResponse();
             response.setMonth(month.name().substring(0, 3));
+            response.setYear(currentYear);
             response.setRevenue(revenue);
             responses.add(response);
         }
@@ -85,10 +91,17 @@ public class RevenueStatisticsServiceImpl implements RevenueStatisticsService {
             totalExpense = BigDecimal.ZERO;
         }
 
+        BigDecimal netProfit = totalRevenue.subtract(totalExpense);
+        BigDecimal margin = BigDecimal.ZERO;
+        if (totalRevenue.compareTo(BigDecimal.ZERO) > 0) {
+            margin = netProfit.multiply(BigDecimal.valueOf(100)).divide(totalRevenue, 2, java.math.RoundingMode.HALF_UP);
+        }
+
         ProfitResponse response = new ProfitResponse();
         response.setTotalRevenue(totalRevenue);
         response.setTotalExpense(totalExpense);
-        response.setNetProfit(totalRevenue.subtract(totalExpense));
+        response.setNetProfit(netProfit);
+        response.setProfitMargin(margin);
         return response;
     }
 }

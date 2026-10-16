@@ -9,4 +9,5 @@ public class ProfitResponse {
     private BigDecimal totalRevenue;
     private BigDecimal totalExpense;
     private BigDecimal netProfit;
+    private BigDecimal profitMargin;
 }

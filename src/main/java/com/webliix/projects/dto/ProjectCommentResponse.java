@@ -15,5 +15,15 @@ public class ProjectCommentResponse {
     private String authorRole;
     private String message;
     private LocalDateTime createdAt;
+
+    public String getComment() {
+        return message;
+    }
+
+    public void setComment(String comment) {
+        if (this.message == null || this.message.isBlank()) {
+            this.message = comment;
+        }
+    }
 }
 

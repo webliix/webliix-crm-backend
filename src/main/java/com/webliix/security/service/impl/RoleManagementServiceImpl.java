@@ -291,8 +291,16 @@ public class RoleManagementServiceImpl implements RoleManagementService {
 
     private void saveRolePermissions(Role role, List<RolePermissionAssignmentDto> permissions) {
         for (RolePermissionAssignmentDto assignment : permissions) {
-            Permission perm = permissionRepository.findByCode(assignment.getCode())
-                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found with code: " + assignment.getCode()));
+            String code = assignment.getCode();
+            if (code == null || code.isBlank()) {
+                code = assignment.getPermissionCode();
+            }
+            if (code == null || code.isBlank()) {
+                continue;
+            }
+            final String permCode = code.trim();
+            Permission perm = permissionRepository.findByCode(permCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found with code: " + permCode));
             ScopeType scope = assignment.getScope() != null ? assignment.getScope() : ScopeType.OWN;
             RolePermission rp = new RolePermission(role, perm, scope);
             rolePermissionRepository.save(rp);
@@ -323,6 +331,7 @@ public class RoleManagementServiceImpl implements RoleManagementService {
         List<RolePermissionAssignmentDto> perms = rps.stream()
                 .map(rp -> RolePermissionAssignmentDto.builder()
                         .code(rp.getPermission().getCode())
+                        .permissionCode(rp.getPermission().getCode())
                         .scope(rp.getScope())
                         .build())
                 .collect(Collectors.toList());

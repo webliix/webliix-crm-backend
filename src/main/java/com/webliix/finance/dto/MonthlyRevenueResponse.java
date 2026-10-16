@@ -7,5 +7,6 @@ import java.math.BigDecimal;
 @Data
 public class MonthlyRevenueResponse {
     private String month;
+    private Integer year;
     private BigDecimal revenue;
 }

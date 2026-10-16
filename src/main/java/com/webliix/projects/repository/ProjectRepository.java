@@ -31,4 +31,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     long countByStatus(ProjectStatus status);
 
     long countByExpectedEndDateBeforeAndStatusNot(LocalDate date, ProjectStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Project p ORDER BY CASE WHEN p.status = com.webliix.projects.enums.ProjectStatus.IN_PROGRESS THEN 1 WHEN p.status = com.webliix.projects.enums.ProjectStatus.PLANNING THEN 2 WHEN p.status = com.webliix.projects.enums.ProjectStatus.TESTING THEN 3 WHEN p.status = com.webliix.projects.enums.ProjectStatus.NOT_STARTED THEN 4 WHEN p.status = com.webliix.projects.enums.ProjectStatus.ON_HOLD THEN 5 ELSE 6 END, p.id DESC")
+    Page<Project> findAllOrderedByActiveStatus(Pageable pageable);
 }

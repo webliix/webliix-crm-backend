@@ -47,6 +47,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Query("SELECT COALESCE(SUM(i.pendingAmount), 0) FROM Invoice i")
     BigDecimal sumPendingAmount();
 
-    @Query("SELECT FUNCTION('MONTH', i.issueDate), COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.issueDate IS NOT NULL GROUP BY FUNCTION('MONTH', i.issueDate)")
+    @Query("SELECT EXTRACT(MONTH FROM i.issueDate), COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.issueDate IS NOT NULL GROUP BY EXTRACT(MONTH FROM i.issueDate)")
     List<Object[]> sumTotalAmountGroupByMonth();
 }

@@ -143,6 +143,9 @@ public class ProjectServiceImpl implements ProjectService {
             if (customerId != null) {
                 return projectRepository.findByCustomerId(customerId, pageable).map(ProjectMapper::toResponse);
             }
+            if (pageable == null || !pageable.getSort().isSorted()) {
+                return projectRepository.findAllOrderedByActiveStatus(pageable).map(ProjectMapper::toResponse);
+            }
             return projectRepository.findAll(pageable).map(ProjectMapper::toResponse);
         }
 
@@ -476,6 +479,9 @@ public class ProjectServiceImpl implements ProjectService {
         comment.setProjectId(projectId);
 
         boolean isCust = isCustomer(auth) || "CLIENT".equalsIgnoreCase(request.getAuthorRole());
+        if (comment.getMessage() == null || comment.getMessage().isBlank()) {
+            comment.setMessage(request.getComment());
+        }
         if (isCust) {
             comment.setAuthorRole("CLIENT");
             if (comment.getAuthorName() == null || comment.getAuthorName().isEmpty()) {
@@ -483,8 +489,20 @@ public class ProjectServiceImpl implements ProjectService {
             }
         } else {
             comment.setAuthorRole("ADMIN");
-            if (comment.getAuthorName() == null || comment.getAuthorName().isEmpty()) {
-                comment.setAuthorName("Webliix Project Lead");
+            if (comment.getAuthorName() == null || comment.getAuthorName().isEmpty() || "Webliix Project Lead".equals(comment.getAuthorName())) {
+                if (auth != null && auth.getName() != null) {
+                    String email = auth.getName().trim().toLowerCase();
+                    userRepository.findByEmail(email).or(() -> userRepository.findByEmail(auth.getName())).ifPresentOrElse(
+                            u -> {
+                                String name = (u.getFirstName() != null ? u.getFirstName() : "") + (u.getLastName() != null ? " " + u.getLastName() : "");
+                                comment.setAuthorName(name.isBlank() ? u.getEmail() : name.trim());
+                                comment.setAuthorId(u.getId());
+                            },
+                            () -> comment.setAuthorName(request.getAuthorName() != null ? request.getAuthorName() : "Team Member")
+                    );
+                } else {
+                    comment.setAuthorName(request.getAuthorName() != null ? request.getAuthorName() : "Webliix Project Lead");
+                }
             }
         }
 

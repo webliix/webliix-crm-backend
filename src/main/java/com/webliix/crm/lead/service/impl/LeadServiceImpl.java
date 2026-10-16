@@ -157,7 +157,14 @@ public class LeadServiceImpl implements LeadService {
     @Override
     public Page<LeadResponse> getAllLeads(Pageable pageable) {
         DataScope scope = dataScopeService.resolve("LEADS_VIEW");
-        return leadRepository.findAll(ScopeSpecs.leadScope(scope), pageable).map(LeadMapper::toResponse);
+        Pageable effectivePageable = (pageable != null && pageable.getSort().isSorted())
+                ? pageable
+                : org.springframework.data.domain.PageRequest.of(
+                        pageable != null ? pageable.getPageNumber() : 0,
+                        pageable != null ? pageable.getPageSize() : 20,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+                );
+        return leadRepository.findAll(ScopeSpecs.leadScope(scope), effectivePageable).map(LeadMapper::toResponse);
     }
 
     @Override
