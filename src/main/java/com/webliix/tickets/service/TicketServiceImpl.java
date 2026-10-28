@@ -235,6 +235,16 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
+    public TicketResponse resolvePublicTicket(String ticketNumber) {
+        Ticket ticket = ticketRepository.findByTicketNumber(ticketNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with number: " + ticketNumber));
+        ticket.setStatus(TicketStatus.RESOLVED);
+        Ticket saved = ticketRepository.save(ticket);
+        return TicketMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
     public TicketResponse updateTicket(Long id, UpdateTicketRequest request) {
         Ticket ticket = findTicketById(id);
         TicketMapper.updateEntity(ticket, request);

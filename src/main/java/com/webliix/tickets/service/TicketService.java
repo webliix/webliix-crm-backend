@@ -20,6 +20,8 @@ public interface TicketService {
 
     PublicTicketDetailsResponse getPublicTicket(String ticketNumber);
 
+    TicketResponse resolvePublicTicket(String ticketNumber);
+
     TicketResponse updateTicket(Long id, UpdateTicketRequest request);
 
     TicketResponse assignTicket(Long id, AssignTicketRequest request);

@@ -110,13 +110,27 @@ public class TicketController {
     }
 
     @PutMapping("/{id}")
-    @RequirePermission("TICKETS_EDIT")
+    @RequirePermission(anyOf = {"TICKETS_EDIT", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> updateTicket(@PathVariable Long id,
                                                                     @RequestBody UpdateTicketRequest request) {
         TicketResponse response = ticketService.updateTicket(id, request);
         return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
                 .success(true)
                 .message("Ticket updated successfully")
+                .data(response)
+                .build());
+    }
+
+    @PutMapping("/{id}/resolve")
+    @RequirePermission(anyOf = {"TICKETS_EDIT", "CLIENT_PORTAL_ACCESS"})
+    public ResponseEntity<ApiResponse<TicketResponse>> resolveTicket(@PathVariable Long id) {
+        UpdateTicketRequest request = UpdateTicketRequest.builder()
+                .status(com.webliix.tickets.enums.TicketStatus.RESOLVED)
+                .build();
+        TicketResponse response = ticketService.updateTicket(id, request);
+        return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
+                .success(true)
+                .message("Ticket resolved successfully")
                 .data(response)
                 .build());
     }

@@ -51,4 +51,14 @@ public class PublicTicketController {
                 .data(response)
                 .build());
     }
+
+    @PostMapping("/{ticketNumber}/resolve")
+    public ResponseEntity<ApiResponse<TicketResponse>> resolvePublicTicket(@PathVariable String ticketNumber) {
+        TicketResponse response = ticketService.resolvePublicTicket(ticketNumber);
+        return ResponseEntity.ok(ApiResponse.<TicketResponse>builder()
+                .success(true)
+                .message("Ticket resolved successfully")
+                .data(response)
+                .build());
+    }
 }
