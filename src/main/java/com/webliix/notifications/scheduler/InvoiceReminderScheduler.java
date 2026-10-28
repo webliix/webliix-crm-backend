@@ -44,7 +44,7 @@ public class InvoiceReminderScheduler {
         }
 
         LocalDate threshold = LocalDate.now().plusDays(3);
-        List<Invoice> allInvoices = invoiceRepository.findAll();
+        List<Invoice> allInvoices = invoiceRepository.findByStatusNotIn(List.of(InvoiceStatus.PAID, InvoiceStatus.CANCELLED));
         int sentCount = 0;
 
         for (Invoice invoice : allInvoices) {
@@ -54,8 +54,8 @@ public class InvoiceReminderScheduler {
                         try {
                             String subject = "Payment Due Notice - Invoice " + invoice.getInvoiceNumber();
                             String amountFormatted = invoice.getTotalAmount() != null
-                                    ? "₹" + invoice.getTotalAmount().toPlainString()
-                                    : "₹0.00";
+                                    ? "â‚¹" + invoice.getTotalAmount().toPlainString()
+                                    : "â‚¹0.00";
                             String html = "<!DOCTYPE html><html><body style=\"font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px;\">" +
                                     "<div style=\"max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 32px;\">" +
                                     "<h2 style=\"color: #0f172a; margin-top: 0;\">Invoice Payment Reminder</h2>" +
@@ -65,7 +65,7 @@ public class InvoiceReminderScheduler {
                                     "<div style=\"text-align: center; margin: 28px 0;\">" +
                                     "<a href=\"https://login.webliix.com\" style=\"background-color: #f59e0b; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 4px; font-weight: bold;\">Pay Online</a>" +
                                     "</div>" +
-                                    "<p style=\"color: #94a3b8; font-size: 12px;\">Webliix Hub Finance • billing@webliix.com</p>" +
+                                    "<p style=\"color: #94a3b8; font-size: 12px;\">Webliix Hub Finance â€¢ billing@webliix.com</p>" +
                                     "</div></body></html>";
 
                             emailService.sendAutomatedHtmlEmail(invoice.getCustomer().getEmail(), subject, html);

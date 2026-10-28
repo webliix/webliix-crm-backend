@@ -160,6 +160,10 @@ public class AuditService {
         if (!StringUtils.hasText(username) || "anonymous".equalsIgnoreCase(username)) {
             return null;
         }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof com.webliix.security.model.WebliixPrincipal principal) {
+            return principal.getUserId();
+        }
         return userRepository.findByEmail(username.trim().toLowerCase())
                 .map(user -> user.getId())
                 .orElse(null);

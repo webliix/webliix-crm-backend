@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,10 +36,38 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final EmployeeRepository employeeRepository;
     private final UserPermissionCacheService userPermissionCacheService;
 
+    private static final long PRINCIPAL_CACHE_TTL_MS = java.time.Duration.ofSeconds(60).toMillis();
+    private final Map<String, PrincipalCacheEntry> principalCache = new ConcurrentHashMap<>();
+
+    private record PrincipalCacheEntry(WebliixPrincipal principal, long expiresAt) {
+        boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
+        }
+    }
+
+    public void evictUserPrincipal(String username) {
+        if (username != null) {
+            principalCache.remove(username.trim().toLowerCase());
+        }
+    }
+
+    public void clearAllPrincipalCache() {
+        principalCache.clear();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var user = userRepository.findByEmail(username)
+        if (username == null) {
+            throw new UsernameNotFoundException("Username cannot be null");
+        }
+        String key = username.trim().toLowerCase();
+        PrincipalCacheEntry cachedEntry = principalCache.get(key);
+        if (cachedEntry != null && !cachedEntry.isExpired()) {
+            return cachedEntry.principal();
+        }
+
+        var user = userRepository.findByEmail(key)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
         int tokenVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0;
@@ -64,7 +93,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             authorities.add(new SimpleGrantedAuthority("SUPER_ADMIN"));
         }
 
-        return WebliixPrincipal.builder()
+        WebliixPrincipal principal = WebliixPrincipal.builder()
                 .userId(user.getId())
                 .username(user.getEmail())
                 .password(user.getPassword())
@@ -78,6 +107,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .permissions(cached.getPermissions())
                 .authorities(authorities)
                 .build();
+
+        principalCache.put(key, new PrincipalCacheEntry(principal, System.currentTimeMillis() + PRINCIPAL_CACHE_TTL_MS));
+        return principal;
     }
 
     private CachedUserPermissions computeUserPermissions(com.webliix.security.entity.User user, int tokenVersion) {

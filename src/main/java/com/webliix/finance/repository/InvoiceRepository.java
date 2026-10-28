@@ -16,6 +16,8 @@ import java.util.Optional;
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     Optional<Invoice> findTopByInvoiceNumberStartingWithOrderByIdDesc(String prefix);
 
+    List<Invoice> findByStatusNotIn(List<InvoiceStatus> statuses);
+
     List<Invoice> findByCustomerId(Long customerId);
     Page<Invoice> findByCustomerId(Long customerId, Pageable pageable);
 
