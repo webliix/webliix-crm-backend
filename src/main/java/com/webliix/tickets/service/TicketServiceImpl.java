@@ -97,7 +97,18 @@ public class TicketServiceImpl implements TicketService {
         }
 
         TicketResponse response = TicketMapper.toResponse(saved);
-        notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "New Support Ticket " + saved.getTicketNumber(), saved.getTitle(), response);
+        if (saved.getAssignedTo() != null) {
+            notificationWebSocketService.sendTicketAssignedToEmployee(
+                    saved.getAssignedTo().getId(),
+                    saved.getAssignedTo().getEmail(),
+                    saved.getId(),
+                    saved.getTicketNumber(),
+                    saved.getTitle(),
+                    response
+            );
+        } else {
+            notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "New Support Ticket " + saved.getTicketNumber(), saved.getTitle(), response);
+        }
         return response;
     }
 
@@ -144,7 +155,18 @@ public class TicketServiceImpl implements TicketService {
         commentRepository.save(initialComment);
 
         TicketResponse res = TicketMapper.toResponse(savedTicket);
-        notificationWebSocketService.broadcastTicketUpdate(savedTicket.getId(), "Client Ticket Created: " + savedTicket.getTicketNumber(), savedTicket.getTitle(), res);
+        if (savedTicket.getAssignedTo() != null) {
+            notificationWebSocketService.sendTicketAssignedToEmployee(
+                    savedTicket.getAssignedTo().getId(),
+                    savedTicket.getAssignedTo().getEmail(),
+                    savedTicket.getId(),
+                    savedTicket.getTicketNumber(),
+                    savedTicket.getTitle(),
+                    res
+            );
+        } else {
+            notificationWebSocketService.broadcastTicketUpdate(savedTicket.getId(), "Client Ticket Created: " + savedTicket.getTicketNumber(), savedTicket.getTitle(), res);
+        }
         return res;
     }
 
@@ -236,7 +258,20 @@ public class TicketServiceImpl implements TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
 
         Ticket updated = ticketRepository.save(ticket);
-        return TicketMapper.toResponse(updated);
+        TicketResponse response = TicketMapper.toResponse(updated);
+        if (updated.getAssignedTo() != null) {
+            notificationWebSocketService.sendTicketAssignedToEmployee(
+                    updated.getAssignedTo().getId(),
+                    updated.getAssignedTo().getEmail(),
+                    updated.getId(),
+                    updated.getTicketNumber(),
+                    "Ticket Updated: " + updated.getTitle(),
+                    response
+            );
+        } else {
+            notificationWebSocketService.broadcastTicketUpdate(updated.getId(), "Ticket Updated: " + updated.getTicketNumber(), updated.getTitle(), response);
+        }
+        return response;
     }
 
     @Override
@@ -252,7 +287,14 @@ public class TicketServiceImpl implements TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         Ticket saved = ticketRepository.save(ticket);
         TicketResponse response = TicketMapper.toResponse(saved);
-        notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "Ticket Assigned: " + saved.getTicketNumber(), "Assigned to " + response.getAssignedToName(), response);
+        notificationWebSocketService.sendTicketAssignedToEmployee(
+                employee.getId(),
+                employee.getEmail(),
+                saved.getId(),
+                saved.getTicketNumber(),
+                saved.getTitle(),
+                response
+        );
         return response;
     }
 
@@ -283,7 +325,19 @@ public class TicketServiceImpl implements TicketService {
         comment.setCreatedAt(LocalDateTime.now());
         TicketComment saved = commentRepository.save(comment);
         TicketCommentResponse response = TicketMapper.toResponse(saved);
-        notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "New Chat Message on " + ticket.getTicketNumber(), saved.getComment(), response);
+
+        if (ticket.getAssignedTo() != null) {
+            notificationWebSocketService.sendTicketCommentToEmployee(
+                    ticket.getAssignedTo().getId(),
+                    ticket.getAssignedTo().getEmail(),
+                    ticket.getId(),
+                    ticket.getTicketNumber(),
+                    saved.getComment(),
+                    response
+            );
+        } else {
+            notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "New Chat Message on " + ticket.getTicketNumber(), saved.getComment(), response);
+        }
         return response;
     }
 
@@ -305,7 +359,19 @@ public class TicketServiceImpl implements TicketService {
         comment.setCreatedAt(LocalDateTime.now());
         TicketComment saved = commentRepository.save(comment);
         TicketCommentResponse response = TicketMapper.toResponse(saved);
-        notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "Client Reply on " + ticket.getTicketNumber(), saved.getComment(), response);
+
+        if (ticket.getAssignedTo() != null) {
+            notificationWebSocketService.sendTicketCommentToEmployee(
+                    ticket.getAssignedTo().getId(),
+                    ticket.getAssignedTo().getEmail(),
+                    ticket.getId(),
+                    ticket.getTicketNumber(),
+                    saved.getComment(),
+                    response
+            );
+        } else {
+            notificationWebSocketService.broadcastTicketUpdate(ticket.getId(), "Client Reply on " + ticket.getTicketNumber(), saved.getComment(), response);
+        }
 
         return response;
     }

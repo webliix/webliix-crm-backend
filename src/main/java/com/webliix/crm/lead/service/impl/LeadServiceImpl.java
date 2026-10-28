@@ -55,11 +55,23 @@ public class LeadServiceImpl implements LeadService {
     @Transactional
     public PublicLeadResponse createPublicLead(PublicLeadRequest request) {
         String cleanName = sanitize(request.getName());
+        if (cleanName != null && cleanName.length() > 250) {
+            cleanName = cleanName.substring(0, 250);
+        }
         String cleanEmail = sanitize(request.getEmail()).toLowerCase();
+        if (cleanEmail != null && cleanEmail.length() > 250) {
+            cleanEmail = cleanEmail.substring(0, 250);
+        }
         String cleanPhone = request.getPhone() != null ? sanitize(request.getPhone()) : null;
+        if (cleanPhone != null && cleanPhone.length() > 48) {
+            cleanPhone = cleanPhone.substring(0, 48);
+        }
         String companyName = request.getCompanyName() != null && !request.getCompanyName().isBlank()
                 ? sanitize(request.getCompanyName())
                 : cleanName;
+        if (companyName != null && companyName.length() > 250) {
+            companyName = companyName.substring(0, 250);
+        }
 
         StringBuilder reqBuilder = new StringBuilder();
         if (request.getServiceRequested() != null && !request.getServiceRequested().isBlank()) {
