@@ -45,6 +45,7 @@ public class SeedDataLoader implements CommandLineRunner {
     private final SubscriptionRepository subscriptionRepository;
     private final TenantRepository tenantRepository;
     private final EmailTemplateRepository emailTemplateRepository;
+    private final com.webliix.notifications.service.EmailTemplateService emailTemplateService;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -172,6 +173,8 @@ public class SeedDataLoader implements CommandLineRunner {
     }
 
     private void seedEmailTemplates() {
+        emailTemplateService.seedTemplatesIfEmpty();
+        if (true) return;
         if (emailTemplateRepository.count() > 0) {
             log.info("Email templates already exist. Skipping...");
             return;

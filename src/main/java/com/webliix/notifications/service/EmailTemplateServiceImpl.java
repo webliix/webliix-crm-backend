@@ -102,6 +102,36 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 "Sent to staff engineer when ticket is assigned",
                 "{{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}"
         ));
+        DEFAULT_TEMPLATES.put("ticket-resolved", new TemplateMeta(
+                "Support Ticket Resolved - Webliix Helpdesk",
+                "Sent to client and team when ticket issue is resolved",
+                "{{CLIENT_NAME}}, {{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}, {{MESSAGE}}"
+        ));
+        DEFAULT_TEMPLATES.put("invoice-reminder", new TemplateMeta(
+                "Invoice Payment Due Reminder - Webliix Hub",
+                "Sent to client when invoice is approaching due date or overdue",
+                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{DUE_DATE}}"
+        ));
+        DEFAULT_TEMPLATES.put("job-application-received", new TemplateMeta(
+                "Application Received - Careers at Webliix",
+                "Automated confirmation sent to candidate upon submitting resume",
+                "{{NAME}}, {{DESIGNATION}}, {{DEPARTMENT}}"
+        ));
+        DEFAULT_TEMPLATES.put("project-status-updated", new TemplateMeta(
+                "Project Milestone Update - Webliix Hub",
+                "Sent to client when engineering logs a project milestone",
+                "{{CLIENT_NAME}}, {{TITLE}}, {{MESSAGE}}"
+        ));
+        DEFAULT_TEMPLATES.put("newsletter-welcome", new TemplateMeta(
+                "Welcome to Webliix Insights & Architecture",
+                "Sent to subscriber upon joining the newsletter list",
+                "{{EMAIL}}, {{NAME}}"
+        ));
+        DEFAULT_TEMPLATES.put("welcome-email", new TemplateMeta(
+                "Welcome to Webliix Hub - Getting Started",
+                "Platform onboarding overview sent to newly provisioned users",
+                "{{NAME}}, {{EMAIL}}, {{LOGIN_URL}}"
+        ));
     }
 
     private static class TemplateMeta {
@@ -127,33 +157,32 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
             TemplateMeta meta = entry.getValue();
             if (emailTemplateRepository.findByTemplateKey(key).isEmpty()) {
                 String html = loadClasspathTemplate(key);
-                if (html != null && !html.isBlank()) {
-                    EmailTemplate template = EmailTemplate.builder()
-                            .templateKey(key)
-                            .subject(meta.defaultSubject)
-                            .htmlContent(html)
-                            .description(meta.description)
-                            .sampleVariables(meta.sampleVariables)
-                            .isActive(true)
-                            .version(1)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-                    emailTemplateRepository.save(template);
-                    log.info("Seeded default email template: {}", key);
+                if (html == null || html.isBlank()) {
+                    html = buildFallbackTemplateHtml(meta.defaultSubject, meta.description);
                 }
+                EmailTemplate template = EmailTemplate.builder()
+                        .templateKey(key)
+                        .subject(meta.defaultSubject)
+                        .htmlContent(html)
+                        .description(meta.description)
+                        .sampleVariables(meta.sampleVariables)
+                        .isActive(true)
+                        .version(1)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+                emailTemplateRepository.save(template);
+                log.info("Seeded default email template: {}", key);
             }
         }
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<EmailTemplateResponse> getAllTemplates() {
+        seedTemplatesIfEmpty();
         List<EmailTemplate> list = emailTemplateRepository.findAll();
-        if (list.isEmpty()) {
-            seedTemplatesIfEmpty();
-            list = emailTemplateRepository.findAll();
-        }
+        list.sort(Comparator.comparing(EmailTemplate::getTemplateKey));
         return list.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -294,14 +323,23 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 
     private static final List<NotificationRuleMeta> SYSTEM_NOTIFICATION_RULES = List.of(
             new NotificationRuleMeta("notify.lead.created", "Inbound Lead Inquiries", "Leads & CRM", "When a client submits an inquiry form", "lead-created"),
+            new NotificationRuleMeta("notify.lead.inquiry_ack", "Lead Auto-Acknowledgment", "Leads & CRM", "Instant confirmation reply sent to client", "lead-inquiry-acknowledgment"),
             new NotificationRuleMeta("notify.lead.converted", "Lead Converted to Customer", "Leads & CRM", "When a lead is converted into an active client account", "customer-welcome"),
             new NotificationRuleMeta("notify.invoice.created", "Invoice Issued to Client", "Billing & Finance", "When a project invoice is finalized and issued", "invoice-generated"),
             new NotificationRuleMeta("notify.invoice.paid", "Invoice Payment Received", "Billing & Finance", "When an invoice payment is verified and cleared", "invoice-paid"),
-            new NotificationRuleMeta("notify.project.created", "Project Initiated", "Projects & Milestones", "When a new project is created for a client", "system-notification"),
+            new NotificationRuleMeta("notify.invoice.overdue", "Overdue Invoice Auto-Reminder", "Billing & Finance", "Automated scheduled reminder for approaching or overdue invoices", "invoice-reminder"),
+            new NotificationRuleMeta("notify.quotation.sent", "Quotation Proposal Sent", "Billing & Finance", "Formal estimate proposal sent to client", "quotation-sent"),
+            new NotificationRuleMeta("notify.project.created", "Project Initiated", "Projects & Milestones", "When a new project is created for a client", "project-status-updated"),
+            new NotificationRuleMeta("notify.project.updated", "Project Milestone Update", "Projects & Milestones", "When team posts a milestone progress deliverable", "project-status-updated"),
             new NotificationRuleMeta("notify.ticket.created", "Live Support Ticket Opened", "Support & Helpdesk", "When a client opens a live support ticket", "ticket-created"),
             new NotificationRuleMeta("notify.ticket.assigned", "Support Ticket Assigned", "Support & Helpdesk", "When a ticket is assigned to a support engineer", "ticket-assigned"),
-            new NotificationRuleMeta("notify.auth.otp", "Account Security & OTP Codes", "Authentication & Security", "Verification codes and password reset tokens", "forgot-password-otp"),
-            new NotificationRuleMeta("notify.worklog.submitted", "Daily Employee Work Log", "HR & Daily Operations", "When team members submit daily progress and costs", "system-notification")
+            new NotificationRuleMeta("notify.ticket.resolved", "Support Ticket Resolved", "Support & Helpdesk", "When a ticket is marked resolved or closed", "ticket-resolved"),
+            new NotificationRuleMeta("notify.employee.created", "Employee Account Provisioning", "HR & Operations", "Credentials sent when staff account is created", "employee-welcome"),
+            new NotificationRuleMeta("notify.payroll.generated", "Monthly Salary Slip", "HR & Operations", "Sent to employee when monthly payroll is processed", "payroll-generated"),
+            new NotificationRuleMeta("notify.worklog.submitted", "Daily Employee Work Log", "HR & Operations", "When team members submit daily progress and hours", "system-notification"),
+            new NotificationRuleMeta("notify.newsletter.welcome", "Newsletter Welcome", "Marketing & Growth", "Sent to subscriber upon joining mailing list", "newsletter-welcome"),
+            new NotificationRuleMeta("notify.career.application", "Job Application Receipt", "Careers & Hiring", "Automated confirmation sent to job applicant", "job-application-received"),
+            new NotificationRuleMeta("notify.auth.otp", "Account Security & OTP Codes", "Authentication & Security", "Verification codes and password reset tokens", "forgot-password-otp")
     );
 
     private static class NotificationRuleMeta {
@@ -417,35 +455,47 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         return null;
     }
 
+    private String buildFallbackTemplateHtml(String title, String description) {
+        return "<!DOCTYPE html><html><body style=\"font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 24px;\">" +
+                "<div style=\"max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 32px;\">" +
+                "<h1 style=\"color: #0f172a; font-size: 20px; margin-top: 0;\">" + (title != null ? title : "Webliix Notification") + "</h1>" +
+                "<p style=\"color: #64748b; font-size: 14px; line-height: 1.6;\">" + (description != null ? description : "") + "</p>" +
+                "<div style=\"background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 20px 0;\">" +
+                "<p style=\"margin: 0; font-size: 14px;\">{{MESSAGE}}</p>" +
+                "</div>" +
+                "<p style=\"color: #94a3b8; font-size: 12px; margin-bottom: 0;\">Automated notification from Webliix Hub • https://webliix.com</p>" +
+                "</div></body></html>";
+    }
+
     private Map<String, String> getDefaultSampleVariables(String key) {
         Map<String, String> map = new HashMap<>();
-        map.put("NAME", "John Doe");
-        map.put("CLIENT_NAME", "Acme Corporation");
-        map.put("EMAIL", "john@example.com");
+        map.put("NAME", "Aarav Sharma");
+        map.put("CLIENT_NAME", "Acme Technologies Pvt Ltd");
+        map.put("EMAIL", "client@example.com");
         map.put("PASSWORD", "Webliix@2026!");
-        map.put("LOGIN_URL", "https://hub.webliix.com/login");
-        map.put("PORTAL_URL", "https://hub.webliix.com/client");
+        map.put("LOGIN_URL", "https://login.webliix.com");
+        map.put("PORTAL_URL", "https://login.webliix.com");
         map.put("OTP", "482915");
         map.put("EXPIRATION_MINUTES", "15");
         map.put("DESIGNATION", "Senior Full-Stack Engineer");
         map.put("DEPARTMENT", "Engineering & Architecture");
         map.put("INVOICE_NUMBER", "INV-2026-0042");
-        map.put("AMOUNT", "$4,850.00");
+        map.put("AMOUNT", "₹48,500.00");
         map.put("DUE_DATE", "October 30, 2026");
         map.put("PAID_DATE", "October 11, 2026");
-        map.put("PHONE", "+1 (555) 019-2834");
+        map.put("PHONE", "+91 98765 43210");
         map.put("SOURCE", "Enterprise Contact Form");
         map.put("INQUIRY_DATE", "October 11, 2026");
-        map.put("EMPLOYEE_NAME", "Sarah Connor");
+        map.put("EMPLOYEE_NAME", "Priya Verma");
         map.put("MONTH", "October");
         map.put("YEAR", "2026");
-        map.put("NET_SALARY", "$5,200.00");
+        map.put("NET_SALARY", "₹85,000.00");
         map.put("QUOTATION_NUMBER", "QT-2026-0089");
-        map.put("TOTAL_AMOUNT", "$12,500.00");
-        map.put("TITLE", "System Update Completed");
+        map.put("TOTAL_AMOUNT", "₹1,25,000.00");
+        map.put("TITLE", "System Delivery Completed");
         map.put("MESSAGE", "Your requested system service tasks have been completed successfully.");
         map.put("TICKET_NUMBER", "TCK-2026-105");
-        map.put("STAFF_NAME", "Alex Vance");
+        map.put("STAFF_NAME", "Rohan Mehta");
         return map;
     }
 

@@ -21,4 +21,14 @@ public interface AutomationService {
     AutomationDashboardResponse getDashboard();
 
     AutomationExecutionResponse executeTrigger(TriggerType triggerType, Map<String, Object> context);
+
+    List<ScheduledJobResponse> getScheduledJobs();
+
+    Map<String, Object> runScheduledJobNow(String jobKey);
+
+    ScheduledJobResponse toggleScheduledJob(String jobKey);
+
+    void clearExecutions();
+
+    void seedDefaultRulesIfEmpty();
 }

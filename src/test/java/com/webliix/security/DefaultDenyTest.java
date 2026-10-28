@@ -23,6 +23,7 @@ public class DefaultDenyTest {
             "PublicReviewController",
             "PublicTicketController",
             "PublicPingController",
+            "PublicCareersController",
             "PortalAuthController"
     );
 

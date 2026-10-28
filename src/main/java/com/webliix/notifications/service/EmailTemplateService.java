@@ -13,6 +13,7 @@ public interface EmailTemplateService {
     String previewTemplate(Long id, PreviewEmailTemplateRequest request);
     boolean testSendTemplate(Long id, TestSendEmailTemplateRequest request);
     EmailTemplateResponse resetTemplateToDefault(Long id);
+    void seedTemplatesIfEmpty();
 
     NotificationRulesResponse getNotificationRules();
     NotificationRulesResponse updateNotificationRules(UpdateNotificationRulesRequest request);
