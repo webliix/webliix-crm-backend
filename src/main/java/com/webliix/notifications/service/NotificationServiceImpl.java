@@ -78,7 +78,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public List<NotificationResponse> getNotificationsForUser(org.springframework.security.core.Authentication auth) {
         if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
-            return getNotifications("admin@webliix.in");
+            return getNotifications("admin@webliix.com");
         }
 
         String userEmail = auth.getName().trim().toLowerCase();
@@ -110,7 +110,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public List<NotificationResponse> getNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
         java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
         List<Notification> list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
 
@@ -126,7 +126,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void clearAllNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
         java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
         List<Notification> all = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
         notificationRepository.deleteAll(all);
@@ -134,7 +134,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public List<NotificationResponse> getUnreadNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
         java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
         return notificationRepository.findByRecipientInAndStatusOrderByCreatedAtDesc(targets, NotificationStatus.PENDING)
                 .stream()
@@ -160,7 +160,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void markAllAsRead(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.in" : recipient.trim();
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
         java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
         List<Notification> unread = notificationRepository.findByRecipientInAndStatusOrderByCreatedAtDesc(targets, NotificationStatus.PENDING);
         unread.forEach(n -> {
