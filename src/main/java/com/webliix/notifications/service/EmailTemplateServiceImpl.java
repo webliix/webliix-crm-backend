@@ -371,6 +371,49 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         systemSettingRepository.save(s);
     }
 
+    public static String applyLayout(String body, String header, String footer) {
+        if (body == null) return "";
+        String result = body;
+
+        // 1. Header placement
+        if (header != null && !header.isBlank()) {
+            if (result.contains("{{HEADER}}")) {
+                result = result.replace("{{HEADER}}", header);
+            } else if (result.matches("(?s).*<!--\\s*Header\\s*-->.*?</tr>.*")) {
+                result = result.replaceAll("(?s)<!--\\s*Header\\s*-->.*?</tr>",
+                        "<!-- Header -->\n<tr><td style=\"padding: 0;\">" + java.util.regex.Matcher.quoteReplacement(header) + "</td></tr>");
+            } else if (result.contains("<!-- Header -->")) {
+                result = result.replace("<!-- Header -->", header);
+            } else if (result.matches("(?i).*<body[^>]*>.*")) {
+                result = result.replaceFirst("(?i)(<body[^>]*>)", "$1\n" + java.util.regex.Matcher.quoteReplacement(header));
+            } else {
+                result = header + "\n" + result;
+            }
+        } else {
+            result = result.replace("{{HEADER}}", "");
+        }
+
+        // 2. Footer placement
+        if (footer != null && !footer.isBlank()) {
+            if (result.contains("{{FOOTER}}")) {
+                result = result.replace("{{FOOTER}}", footer);
+            } else if (result.matches("(?s).*<!--\\s*Footer\\s*-->.*?</tr>.*")) {
+                result = result.replaceAll("(?s)<!--\\s*Footer\\s*-->.*?</tr>",
+                        "<!-- Footer -->\n<tr><td style=\"padding: 0;\">" + java.util.regex.Matcher.quoteReplacement(footer) + "</td></tr>");
+            } else if (result.contains("<!-- Footer -->")) {
+                result = result.replace("<!-- Footer -->", footer);
+            } else if (result.matches("(?i).*</body>.*")) {
+                result = result.replaceFirst("(?i)(</body>)", java.util.regex.Matcher.quoteReplacement(footer) + "\n$1");
+            } else {
+                result = result + "\n" + footer;
+            }
+        } else {
+            result = result.replace("{{FOOTER}}", "");
+        }
+
+        return result;
+    }
+
     @Override
     public String renderTemplateWithLayout(String templateKey, Map<String, String> variables) {
         EmailTemplate t = emailTemplateRepository.findByTemplateKey(templateKey).orElse(null);
@@ -378,7 +421,6 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 ? t.getHtmlContent() : loadClasspathTemplate(templateKey);
         if (body == null || body.isBlank()) {
             body = """
-                {{HEADER}}
                 <div style="padding: 32px 28px; background-color: #0F1F33; color: #F8FAFC; border-left: 1px solid rgba(96,165,250,0.22); border-right: 1px solid rgba(96,165,250,0.22);">
                     <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #FFFFFF;">{{SUBJECT}}</h2>
                     <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #E2E8F0; white-space: pre-wrap;">{{MESSAGE}}</p>
@@ -386,10 +428,7 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                         <a href="{{CTA_URL}}" style="display: inline-block; padding: 12px 24px; background-color: #38BDF8; color: #07111F; text-decoration: none; font-weight: 700; border-radius: 6px; font-size: 14px;">{{CTA_TEXT}}</a>
                     </div>
                 </div>
-                {{FOOTER}}
                 """;
-        } else if (!body.contains("{{HEADER}}") && !body.contains("{{FOOTER}}")) {
-            body = "{{HEADER}}\n" + body + "\n{{FOOTER}}";
         }
 
         GlobalEmailLayoutDto globalLayout = getGlobalLayout();
@@ -398,22 +437,17 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         String footer = (t != null && t.getFooterHtml() != null && !t.getFooterHtml().isBlank())
                 ? t.getFooterHtml() : globalLayout.getFooterHtml();
 
-        if (body.contains("{{HEADER}}")) {
-            body = body.replace("{{HEADER}}", header);
-        }
-        if (body.contains("{{FOOTER}}")) {
-            body = body.replace("{{FOOTER}}", footer);
-        }
+        String rendered = applyLayout(body, header, footer);
 
         if (variables != null) {
             for (Map.Entry<String, String> entry : variables.entrySet()) {
                 String val = entry.getValue() != null ? entry.getValue() : "";
-                body = body.replace("{{" + entry.getKey() + "}}", val)
-                           .replace("{{" + entry.getKey().toUpperCase() + "}}", val)
-                           .replace("{{" + entry.getKey().toLowerCase() + "}}", val);
+                rendered = rendered.replace("{{" + entry.getKey() + "}}", val)
+                                   .replace("{{" + entry.getKey().toUpperCase() + "}}", val)
+                                   .replace("{{" + entry.getKey().toLowerCase() + "}}", val);
             }
         }
-        return body;
+        return rendered;
     }
 
     @Override
@@ -435,16 +469,24 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 ? request.getHtmlContent()
                 : t.getHtmlContent();
 
+        GlobalEmailLayoutDto globalLayout = getGlobalLayout();
+        String header = (t.getHeaderHtml() != null && !t.getHeaderHtml().isBlank())
+                ? t.getHeaderHtml() : globalLayout.getHeaderHtml();
+        String footer = (t.getFooterHtml() != null && !t.getFooterHtml().isBlank())
+                ? t.getFooterHtml() : globalLayout.getFooterHtml();
+
+        String rendered = applyLayout(content, header, footer);
+
         Map<String, String> vars = request != null && request.getVariables() != null
                 ? request.getVariables()
                 : getDefaultSampleVariables(t.getTemplateKey());
 
         for (Map.Entry<String, String> e : vars.entrySet()) {
-            content = content.replace("{{" + e.getKey() + "}}", e.getValue())
-                             .replace("{{" + e.getKey().toUpperCase() + "}}", e.getValue())
-                             .replace("{{" + e.getKey().toLowerCase() + "}}", e.getValue());
+            rendered = rendered.replace("{{" + e.getKey() + "}}", e.getValue())
+                               .replace("{{" + e.getKey().toUpperCase() + "}}", e.getValue())
+                               .replace("{{" + e.getKey().toLowerCase() + "}}", e.getValue());
         }
-        return content;
+        return rendered;
     }
 
     @Override
@@ -460,20 +502,36 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 ? request.getHtmlContent()
                 : t.getHtmlContent();
 
+        GlobalEmailLayoutDto globalLayout = getGlobalLayout();
+        String header = (t.getHeaderHtml() != null && !t.getHeaderHtml().isBlank())
+                ? t.getHeaderHtml() : globalLayout.getHeaderHtml();
+        String footer = (t.getFooterHtml() != null && !t.getFooterHtml().isBlank())
+                ? t.getFooterHtml() : globalLayout.getFooterHtml();
+
+        String rendered = applyLayout(htmlContent, header, footer);
+
         Map<String, String> vars = request.getVariables() != null
                 ? request.getVariables()
                 : getDefaultSampleVariables(t.getTemplateKey());
 
         for (Map.Entry<String, String> e : vars.entrySet()) {
-            htmlContent = htmlContent.replace("{{" + e.getKey() + "}}", e.getValue())
-                                     .replace("{{" + e.getKey().toUpperCase() + "}}", e.getValue())
-                                     .replace("{{" + e.getKey().toLowerCase() + "}}", e.getValue());
+            rendered = rendered.replace("{{" + e.getKey() + "}}", e.getValue())
+                               .replace("{{" + e.getKey().toUpperCase() + "}}", e.getValue())
+                               .replace("{{" + e.getKey().toLowerCase() + "}}", e.getValue());
             subject = subject.replace("{{" + e.getKey() + "}}", e.getValue())
                              .replace("{{" + e.getKey().toUpperCase() + "}}", e.getValue());
         }
 
         try {
-            emailService.sendAutomatedHtmlEmail(request.getRecipientEmail(), subject, htmlContent);
+            String sender = (t.getSenderEmail() != null && !t.getSenderEmail().isBlank())
+                    ? t.getSenderEmail().trim().toLowerCase() : "noreply@webliix.com";
+            if (sender.contains("support")) {
+                emailService.sendSupportHtmlEmail(request.getRecipientEmail(), subject, rendered);
+            } else if (sender.contains("contact")) {
+                emailService.sendCustomHtmlEmail(request.getRecipientEmail(), subject, rendered);
+            } else {
+                emailService.sendAutomatedHtmlEmail(request.getRecipientEmail(), subject, rendered);
+            }
             return true;
         } catch (Exception ex) {
             log.error("Failed to send test email to {}: {}", request.getRecipientEmail(), ex.getMessage());

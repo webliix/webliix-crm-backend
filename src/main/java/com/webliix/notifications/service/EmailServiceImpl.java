@@ -261,15 +261,49 @@ public class EmailServiceImpl implements EmailService {
         try {
             // First check customized template in DB
             Optional<com.webliix.notifications.entity.EmailTemplate> dbTemplate = emailTemplateRepository.findByTemplateKey(templateName);
+            String htmlContent = null;
+            String customHeader = null;
+            String customFooter = null;
+
             if (dbTemplate.isPresent() && Boolean.TRUE.equals(dbTemplate.get().getIsActive()) && dbTemplate.get().getHtmlContent() != null) {
-                return dbTemplate.get().getHtmlContent();
+                htmlContent = dbTemplate.get().getHtmlContent();
+                customHeader = dbTemplate.get().getHeaderHtml();
+                customFooter = dbTemplate.get().getFooterHtml();
+            } else {
+                // Fallback to classpath template
+                InputStream is = getClass().getResourceAsStream("/templates/emails/" + templateName + ".html");
+                if (is != null) {
+                    htmlContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
             }
 
-            // Fallback to classpath template
-            InputStream is = getClass().getResourceAsStream("/templates/emails/" + templateName + ".html");
-            if (is != null) {
-                return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            if (htmlContent == null) return null;
+
+            // Resolve Global Layout from Settings cache
+            String globalHeader = null;
+            String globalFooter = null;
+            try {
+                com.webliix.settings.entity.SystemSetting h = settingsCacheService.getByKey("email.global.header_html");
+                if (h != null && h.getSettingValue() != null && !h.getSettingValue().isBlank()) {
+                    globalHeader = h.getSettingValue();
+                } else {
+                    globalHeader = EmailTemplateServiceImpl.DEFAULT_GLOBAL_HEADER;
+                }
+                com.webliix.settings.entity.SystemSetting f = settingsCacheService.getByKey("email.global.footer_html");
+                if (f != null && f.getSettingValue() != null && !f.getSettingValue().isBlank()) {
+                    globalFooter = f.getSettingValue();
+                } else {
+                    globalFooter = EmailTemplateServiceImpl.DEFAULT_GLOBAL_FOOTER;
+                }
+            } catch (Exception ex) {
+                globalHeader = EmailTemplateServiceImpl.DEFAULT_GLOBAL_HEADER;
+                globalFooter = EmailTemplateServiceImpl.DEFAULT_GLOBAL_FOOTER;
             }
+
+            String activeHeader = (customHeader != null && !customHeader.isBlank()) ? customHeader : globalHeader;
+            String activeFooter = (customFooter != null && !customFooter.isBlank()) ? customFooter : globalFooter;
+
+            return EmailTemplateServiceImpl.applyLayout(htmlContent, activeHeader, activeFooter);
         } catch (Exception e) {
             log.error("Failed to load email template: {}", templateName, e);
         }
