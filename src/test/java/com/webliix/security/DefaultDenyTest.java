@@ -27,7 +27,7 @@ public class DefaultDenyTest {
             "PortalAuthController"
     );
 
-    // Allowlist of individual public methods in controllers (e.g. AuthController login/register)
+    // Allowlist of individual public methods in controllers (e.g. AuthController login/register, public offer listings)
     private static final Set<String> PUBLIC_METHOD_NAMES = Set.of(
             "register",
             "login",
@@ -35,7 +35,9 @@ public class DefaultDenyTest {
             "verifyResetOtp",
             "resetPassword",
             "verifyEmail",
-            "resendVerificationOtp"
+            "resendVerificationOtp",
+            "getOffers",
+            "getOffer"
     );
 
     @Test
@@ -70,8 +72,9 @@ public class DefaultDenyTest {
                     continue;
                 }
 
-                // Skip allowlisted public methods in AuthController
-                if (clazz.getSimpleName().equals("AuthController") && PUBLIC_METHOD_NAMES.contains(method.getName())) {
+                // Skip allowlisted public methods in AuthController and OfferController
+                if ((clazz.getSimpleName().equals("AuthController") || clazz.getSimpleName().equals("OfferController"))
+                        && PUBLIC_METHOD_NAMES.contains(method.getName())) {
                     continue;
                 }
 
