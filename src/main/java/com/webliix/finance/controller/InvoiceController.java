@@ -44,21 +44,21 @@ public class InvoiceController {
         return ResponseEntity.ok(ApiResponse.<Page<InvoiceResponse>>builder().success(true).message("Invoices fetched").data(result).build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("INVOICES_VIEW")
     public ResponseEntity<ApiResponse<InvoiceResponse>> get(@PathVariable Long id) {
         InvoiceResponse response = invoiceService.getInvoice(id);
         return ResponseEntity.ok(ApiResponse.<InvoiceResponse>builder().success(true).message("Invoice fetched").data(response).build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("INVOICES_EDIT")
     public ResponseEntity<ApiResponse<InvoiceResponse>> update(@PathVariable Long id, @RequestBody CreateInvoiceRequest req) {
         InvoiceResponse response = invoiceService.updateInvoice(id, req);
         return ResponseEntity.ok(ApiResponse.<InvoiceResponse>builder().success(true).message("Invoice updated").data(response).build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("INVOICES_DELETE")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         invoiceService.deleteInvoice(id);
@@ -82,7 +82,7 @@ public class InvoiceController {
         return ResponseEntity.ok(ApiResponse.<InvoiceDashboardResponse>builder().success(true).message("Invoice dashboard").data(response).build());
     }
 
-    @PostMapping("/{id}/payments")
+    @PostMapping("/{id:[0-9]+}/payments")
     @RequirePermission("PAYMENTS_RECORD")
     public ResponseEntity<ApiResponse<InvoiceResponse>> recordPayment(
             @PathVariable Long id,
@@ -95,7 +95,7 @@ public class InvoiceController {
                 .build());
     }
 
-    @GetMapping("/{id}/payments")
+    @GetMapping("/{id:[0-9]+}/payments")
     @RequirePermission("PAYMENTS_VIEW")
     public ResponseEntity<ApiResponse<List<Payment>>> getPayments(@PathVariable Long id) {
         List<Payment> payments = paymentRepository.findByInvoiceId(id);

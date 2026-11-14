@@ -36,7 +36,7 @@ public class PayrollController {
         return ResponseEntity.ok(ApiResponse.<Page<PayrollResponse>>builder().success(true).message("Payroll records fetched").data(response).build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("PAYROLL_VIEW")
     public ResponseEntity<ApiResponse<PayrollResponse>> getPayroll(@PathVariable Long id) {
         PayrollResponse response = payrollService.getPayroll(id);

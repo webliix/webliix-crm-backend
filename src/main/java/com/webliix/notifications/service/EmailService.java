@@ -19,4 +19,10 @@ public interface EmailService {
     void sendForgotPasswordOtpEmail(String to, String name, String otp, int expirationMinutes);
 
     void sendPasswordResetSuccessEmail(String to, String name);
+
+    void sendSupportHtmlEmail(String to, String subject, String htmlBody);
+
+    void sendCustomHtmlEmail(String to, String subject, String htmlBody);
+
+    void sendTemplateEmailWithSender(String to, String templateName, String subject, java.util.Map<String, String> variables, String senderEmail, String senderName);
 }

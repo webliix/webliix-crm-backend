@@ -56,7 +56,7 @@ public class ExpenseController {
                 .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("EXPENSES_VIEW")
     public ResponseEntity<ApiResponse<ExpenseResponse>> getExpense(@PathVariable Long id) {
         ExpenseResponse response = expenseService.getExpense(id);
@@ -67,7 +67,7 @@ public class ExpenseController {
                 .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("EXPENSES_EDIT")
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateExpense(
             @PathVariable Long id,
@@ -81,7 +81,7 @@ public class ExpenseController {
                 .build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("EXPENSES_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteExpense(@PathVariable Long id) {
         expenseService.deleteExpense(id);
@@ -91,7 +91,7 @@ public class ExpenseController {
                 .build());
     }
 
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/{id:[0-9]+}/status")
     @RequirePermission(anyOf = {"EXPENSES_APPROVE", "EXPENSES_PAY"})
     public ResponseEntity<ApiResponse<ExpenseResponse>> updateStatus(
             @PathVariable Long id,

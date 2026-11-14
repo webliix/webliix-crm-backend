@@ -37,6 +37,16 @@ public class EmailTemplate {
     @Column(columnDefinition = "TEXT")
     private String plainTextContent;
 
+    @Column(name = "sender_email", length = 120)
+    @Builder.Default
+    private String senderEmail = "noreply@webliix.com";
+
+    @Column(name = "header_html", columnDefinition = "TEXT")
+    private String headerHtml;
+
+    @Column(name = "footer_html", columnDefinition = "TEXT")
+    private String footerHtml;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

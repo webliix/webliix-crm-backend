@@ -57,6 +57,19 @@ public class NotificationController {
                 .build());
     }
 
+
+
+    @GetMapping("/dashboard")
+    @RequirePermission("NOTIFICATIONS_BROADCAST")
+    public ResponseEntity<ApiResponse<NotificationDashboardResponse>> getDashboard() {
+        NotificationDashboardResponse response = notificationService.getDashboard();
+        return ResponseEntity.ok(ApiResponse.<NotificationDashboardResponse>builder()
+                .success(true)
+                .message("Notification dashboard fetched")
+                .data(response)
+                .build());
+    }
+
     @GetMapping("/{recipient}")
     @RequirePermission(anyOf = {"NOTIFICATIONS_BROADCAST", "DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications(
@@ -75,7 +88,7 @@ public class NotificationController {
                 .build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission(anyOf = {"NOTIFICATIONS_BROADCAST", "DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<Void>> deleteNotification(@PathVariable Long id) {
         notificationService.deleteNotification(id);
@@ -143,7 +156,7 @@ public class NotificationController {
                 .build());
     }
 
-    @GetMapping("/{id}/detail")
+    @GetMapping("/{id:[0-9]+}/detail")
     @RequirePermission(anyOf = {"NOTIFICATIONS_BROADCAST", "DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<NotificationResponse>> getNotification(@PathVariable Long id) {
         NotificationResponse response = notificationService.getNotification(id);
@@ -154,7 +167,7 @@ public class NotificationController {
                 .build());
     }
 
-    @PutMapping("/{id}/read")
+    @PutMapping("/{id:[0-9]+}/read")
     @RequirePermission(anyOf = {"NOTIFICATIONS_BROADCAST", "DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<NotificationResponse>> markAsRead(@PathVariable Long id) {
         NotificationResponse response = notificationService.markAsRead(id);
@@ -186,16 +199,7 @@ public class NotificationController {
                 .build());
     }
 
-    @GetMapping("/dashboard")
-    @RequirePermission("NOTIFICATIONS_BROADCAST")
-    public ResponseEntity<ApiResponse<NotificationDashboardResponse>> getDashboard() {
-        NotificationDashboardResponse response = notificationService.getDashboard();
-        return ResponseEntity.ok(ApiResponse.<NotificationDashboardResponse>builder()
-                .success(true)
-                .message("Notification dashboard fetched")
-                .data(response)
-                .build());
-    }
+
 
     @GetMapping("/preferences/{userId}")
     @RequirePermission(anyOf = {"NOTIFICATIONS_BROADCAST", "DASHBOARD_VIEW", "EMPLOYEE_PORTAL_ACCESS", "CLIENT_PORTAL_ACCESS"})

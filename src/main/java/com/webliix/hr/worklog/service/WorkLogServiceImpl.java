@@ -134,14 +134,22 @@ public class WorkLogServiceImpl implements WorkLogService {
     @Override
     @Transactional
     public WorkLogResponse updateWorkLog(Long id, WorkLogRequest request, Authentication auth) {
-        Employee employee = resolveEmployeeFromAuth(auth);
         WorkLog workLog = workLogRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Work log not found: " + id));
 
-        if (!workLog.getEmployee().getId().equals(employee.getId())) {
-            throw new AccessDeniedException("You can only update your own work logs.");
+        boolean isStaff = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String authName = a.getAuthority().toUpperCase();
+                    return authName.contains("ADMIN") || authName.contains("MANAGER");
+                });
+
+        if (!isStaff) {
+            Employee employee = resolveEmployeeFromAuth(auth);
+            if (!workLog.getEmployee().getId().equals(employee.getId())) {
+                throw new AccessDeniedException("You can only update your own work logs.");
+            }
         }
-        if ("APPROVED".equals(workLog.getStatus())) {
+        if ("APPROVED".equals(workLog.getStatus()) && !isStaff) {
             throw new IllegalStateException("Cannot modify an already approved work log.");
         }
 
@@ -149,11 +157,14 @@ public class WorkLogServiceImpl implements WorkLogService {
         if (request.getProjectId() != null) {
             project = projectRepository.findById(request.getProjectId())
                     .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + request.getProjectId()));
-            boolean isMember = projectMemberRepository.findByProjectId(project.getId())
-                    .stream()
-                    .anyMatch(m -> m.getUserId() != null && m.getUserId().equals(employee.getUser().getId()));
-            if (!isMember) {
-                throw new AccessDeniedException("You are not assigned to project: " + project.getProjectName());
+            if (!isStaff) {
+                Employee employee = resolveEmployeeFromAuth(auth);
+                boolean isMember = projectMemberRepository.findByProjectId(project.getId())
+                        .stream()
+                        .anyMatch(m -> m.getUserId() != null && m.getUserId().equals(employee.getUser().getId()));
+                if (!isMember) {
+                    throw new AccessDeniedException("You are not assigned to project: " + project.getProjectName());
+                }
             }
         }
 

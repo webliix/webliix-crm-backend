@@ -82,25 +82,51 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         String userEmail = auth.getName().trim().toLowerCase();
+        boolean isStaff = auth.getAuthorities() != null && auth.getAuthorities().stream().anyMatch(a -> {
+            String name = a.getAuthority().toUpperCase();
+            return name.contains("ADMIN") || name.contains("EMPLOYEE") || name.contains("MANAGER") || name.contains("HR") || name.equals("*");
+        });
+
         java.util.Set<String> targets = new java.util.HashSet<>();
         targets.add(userEmail);
-        targets.add("ALL");
-        targets.add("ALL_USERS");
 
-        if (auth.getAuthorities() != null) {
-            auth.getAuthorities().forEach(granted -> {
-                String authName = granted.getAuthority();
-                targets.add(authName);
-                if (authName.startsWith("ROLE_")) {
-                    targets.add(authName.substring(5));
-                }
-            });
+        if (isStaff) {
+            targets.add("ALL");
+            targets.add("ALL_USERS");
+            targets.add("ALL_STAFF");
+            targets.add("BROADCAST");
+            if (auth.getAuthorities() != null) {
+                auth.getAuthorities().forEach(granted -> {
+                    String authName = granted.getAuthority();
+                    targets.add(authName);
+                    if (authName.startsWith("ROLE_")) {
+                        targets.add(authName.substring(5));
+                    }
+                });
+            }
+        } else {
+            // Strictly client / customer scope: only personal and broadcast client announcements
+            targets.add("ALL_CLIENTS");
+            targets.add("BROADCAST_CLIENTS");
+            targets.add("CLIENT");
+            targets.add("ROLE_CLIENT");
         }
 
         List<Notification> notifications = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
 
-        if (notifications.isEmpty()) {
-            return getNotifications(userEmail);
+        // Security filter: Ensure clients NEVER receive internal lead notifications, payroll, reviews, or employee alerts
+        if (!isStaff) {
+            notifications = notifications.stream().filter(n -> {
+                String ref = n.getReferenceType() != null ? n.getReferenceType().toUpperCase() : "";
+                String recType = n.getRecipientType() != null ? n.getRecipientType().toUpperCase() : "";
+                if ("LEAD".equals(ref) || "PAYROLL".equals(ref) || "REVIEW".equals(ref) || "NEWSLETTER".equals(ref)) {
+                    return false;
+                }
+                if ("ADMIN".equals(recType) || "EMPLOYEE".equals(recType) || "STAFF".equals(recType)) {
+                    return false;
+                }
+                return true;
+            }).collect(Collectors.toList());
         }
 
         return notifications.stream()
@@ -110,9 +136,28 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public List<NotificationResponse> getNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
-        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim().toLowerCase();
+        boolean looksLikeAdmin = rec.contains("admin") || rec.contains("webliix.com");
+        
+        java.util.Set<String> targets = new java.util.HashSet<>();
+        targets.add(rec);
+        targets.add(recipient != null ? recipient.trim() : "");
+        if (looksLikeAdmin) {
+            targets.addAll(java.util.List.of("ALL", "ALL_USERS", "BROADCAST", "ROLE_ADMIN", "ADMIN"));
+        } else {
+            targets.addAll(java.util.List.of("ALL_CLIENTS", "BROADCAST_CLIENTS", "CLIENT", "ROLE_CLIENT"));
+        }
+        
         List<Notification> list = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
+
+        if (!looksLikeAdmin) {
+            list = list.stream().filter(n -> {
+                String ref = n.getReferenceType() != null ? n.getReferenceType().toUpperCase() : "";
+                String recType = n.getRecipientType() != null ? n.getRecipientType().toUpperCase() : "";
+                return !"LEAD".equals(ref) && !"PAYROLL".equals(ref) && !"REVIEW".equals(ref) && !"NEWSLETTER".equals(ref)
+                        && !"ADMIN".equals(recType) && !"EMPLOYEE".equals(recType) && !"STAFF".equals(recType);
+            }).collect(Collectors.toList());
+        }
 
         return list.stream()
                 .map(NotificationMapper::toResponse)
@@ -126,18 +171,32 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void clearAllNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
-        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim().toLowerCase();
+        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec));
         List<Notification> all = notificationRepository.findByRecipientInOrderByCreatedAtDesc(targets);
         notificationRepository.deleteAll(all);
     }
 
     @Override
     public List<NotificationResponse> getUnreadNotifications(String recipient) {
-        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim();
-        java.util.Set<String> targets = new java.util.HashSet<>(java.util.List.of(rec, rec.toLowerCase(), "ALL", "ALL_USERS", "BROADCAST"));
+        String rec = (recipient == null || recipient.isBlank()) ? "admin@webliix.com" : recipient.trim().toLowerCase();
+        boolean looksLikeAdmin = rec.contains("admin") || rec.contains("webliix.com");
+        java.util.Set<String> targets = new java.util.HashSet<>();
+        targets.add(rec);
+        if (looksLikeAdmin) {
+            targets.addAll(java.util.List.of("ALL", "ALL_USERS", "BROADCAST", "ROLE_ADMIN", "ADMIN"));
+        } else {
+            targets.addAll(java.util.List.of("ALL_CLIENTS", "BROADCAST_CLIENTS", "CLIENT", "ROLE_CLIENT"));
+        }
         return notificationRepository.findByRecipientInAndStatusOrderByCreatedAtDesc(targets, NotificationStatus.PENDING)
                 .stream()
+                .filter(n -> {
+                    if (looksLikeAdmin) return true;
+                    String ref = n.getReferenceType() != null ? n.getReferenceType().toUpperCase() : "";
+                    String recType = n.getRecipientType() != null ? n.getRecipientType().toUpperCase() : "";
+                    return !"LEAD".equals(ref) && !"PAYROLL".equals(ref) && !"REVIEW".equals(ref) && !"NEWSLETTER".equals(ref)
+                            && !"ADMIN".equals(recType) && !"EMPLOYEE".equals(recType) && !"STAFF".equals(recType);
+                })
                 .map(NotificationMapper::toResponse)
                 .collect(Collectors.toList());
     }

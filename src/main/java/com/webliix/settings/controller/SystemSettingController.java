@@ -54,7 +54,7 @@ public class SystemSettingController {
         return ResponseEntity.ok(systemSettingService.createSetting(request));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("SETTINGS_MANAGE")
     public ResponseEntity<SystemSettingResponse> updateSetting(@PathVariable("id") Long id,
                                                                @RequestBody SystemSettingRequest request) {

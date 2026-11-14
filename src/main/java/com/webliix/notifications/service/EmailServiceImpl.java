@@ -30,6 +30,12 @@ public class EmailServiceImpl implements EmailService {
     @Value("${mail.contact.from-name:Webliix Team}")
     private String contactFromName;
 
+    @Value("${mail.support.from:support@webliix.com}")
+    private String supportFromEmail;
+
+    @Value("${mail.support.from-name:Webliix Support}")
+    private String supportFromName;
+
     public EmailServiceImpl(
             MailSenderStrategy mailSenderStrategy,
             com.webliix.notifications.repository.EmailTemplateRepository emailTemplateRepository,
@@ -37,6 +43,55 @@ public class EmailServiceImpl implements EmailService {
         this.mailSenderStrategy = mailSenderStrategy;
         this.emailTemplateRepository = emailTemplateRepository;
         this.settingsCacheService = settingsCacheService;
+    }
+
+    @Async
+    @Override
+    public void sendSupportHtmlEmail(String to, String subject, String htmlBody) {
+        try {
+            boolean success = mailSenderStrategy.sendMail(
+                    supportFromEmail,
+                    supportFromName,
+                    to,
+                    subject,
+                    htmlBody,
+                    true
+            );
+            if (success) {
+                log.info("Support HTML email sent to {} via {}", to, mailSenderStrategy.getProviderName());
+            } else {
+                log.error("Failed to send support HTML email to {}", to);
+            }
+        } catch (Exception e) {
+            log.error("Exception during support HTML email dispatch to {}: {}", to, e.getMessage());
+        }
+    }
+
+    @Async
+    @Override
+    public void sendCustomHtmlEmail(String to, String subject, String htmlBody) {
+        sendConversationalHtmlEmail(to, subject, htmlBody);
+    }
+
+    @Async
+    @Override
+    public void sendTemplateEmailWithSender(String to, String templateName, String subject, java.util.Map<String, String> variables, String senderEmail, String senderName) {
+        String htmlBody = loadTemplate(templateName);
+        if (htmlBody != null && variables != null) {
+            for (java.util.Map.Entry<String, String> entry : variables.entrySet()) {
+                String val = entry.getValue() != null ? entry.getValue() : "";
+                htmlBody = htmlBody.replace("{{" + entry.getKey() + "}}", val)
+                                   .replace("{{" + entry.getKey().toUpperCase() + "}}", val)
+                                   .replace("{{" + entry.getKey().toLowerCase() + "}}", val);
+            }
+        }
+        String chosenFrom = (senderEmail != null && !senderEmail.isBlank()) ? senderEmail : contactFromEmail;
+        String chosenName = (senderName != null && !senderName.isBlank()) ? senderName : contactFromName;
+        try {
+            mailSenderStrategy.sendMail(chosenFrom, chosenName, to, subject, htmlBody != null ? htmlBody : subject, true);
+        } catch (Exception e) {
+            log.error("Failed to send custom template email to {}: {}", to, e.getMessage());
+        }
     }
 
     @Async

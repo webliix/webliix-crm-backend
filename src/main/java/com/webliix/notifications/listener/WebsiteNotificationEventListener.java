@@ -26,13 +26,13 @@ public class WebsiteNotificationEventListener {
             CreateNotificationRequest request = CreateNotificationRequest.builder()
                     .title("New Newsletter Subscriber")
                     .message("User (" + event.getEmail() + ") subscribed to Webliix updates on page: " + (event.getSourcePage() != null ? event.getSourcePage() : "/"))
-                    .recipient("ALL")
-                    .recipientType("BROADCAST")
+                    .recipient("ROLE_ADMIN")
+                    .recipientType("STAFF")
                     .channel(NotificationChannel.IN_APP)
                     .referenceType("NEWSLETTER")
                     .build();
 
-            notificationService.broadcastNotification(request);
+            notificationService.createNotification(request);
         } catch (Exception ex) {
             log.error("Failed to broadcast newsletter notification: {}", ex.getMessage());
         }
@@ -51,13 +51,13 @@ public class WebsiteNotificationEventListener {
             CreateNotificationRequest request = CreateNotificationRequest.builder()
                     .title(title)
                     .message(msg)
-                    .recipient("ALL")
-                    .recipientType("BROADCAST")
+                    .recipient("ROLE_ADMIN")
+                    .recipientType("STAFF")
                     .channel(NotificationChannel.IN_APP)
                     .referenceType("REVIEW")
                     .build();
 
-            notificationService.broadcastNotification(request);
+            notificationService.createNotification(request);
         } catch (Exception ex) {
             log.error("Failed to broadcast review notification: {}", ex.getMessage());
         }

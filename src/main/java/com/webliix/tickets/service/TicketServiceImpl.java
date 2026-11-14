@@ -19,6 +19,7 @@ import com.webliix.tickets.repository.TicketAttachmentRepository;
 import com.webliix.tickets.repository.TicketCommentRepository;
 import com.webliix.tickets.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.webliix.notifications.websocket.NotificationWebSocketService;
+import com.webliix.notifications.service.NotificationService;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TicketServiceImpl implements TicketService {
@@ -43,6 +46,7 @@ public class TicketServiceImpl implements TicketService {
     private final EmployeeRepository employeeRepository;
     private final TicketNumberGenerator ticketNumberGenerator;
     private final NotificationWebSocketService notificationWebSocketService;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -109,6 +113,23 @@ public class TicketServiceImpl implements TicketService {
         } else {
             notificationWebSocketService.broadcastTicketUpdate(saved.getId(), "New Support Ticket " + saved.getTicketNumber(), saved.getTitle(), response);
         }
+
+        try {
+            String clientName = saved.getCustomer() != null && saved.getCustomer().getContactPerson() != null
+                    ? saved.getCustomer().getContactPerson() : "Client";
+            notificationService.createNotification(com.webliix.notifications.dto.CreateNotificationRequest.builder()
+                    .title("New Service Request: " + saved.getTicketNumber())
+                    .message("Client " + clientName + " submitted: " + saved.getTitle())
+                    .recipient("ROLE_ADMIN")
+                    .recipientType("ADMIN")
+                    .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
+                    .referenceType("TICKET")
+                    .referenceId(saved.getId())
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Could not dispatch admin ticket notification: {}", ex.getMessage());
+        }
+
         return response;
     }
 
@@ -269,6 +290,22 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket updated = ticketRepository.save(ticket);
         TicketResponse response = TicketMapper.toResponse(updated);
+
+        if (updated.getCustomer() != null && updated.getCustomer().getEmail() != null) {
+            try {
+                notificationService.createNotification(com.webliix.notifications.dto.CreateNotificationRequest.builder()
+                        .title("Update on Ticket #" + updated.getTicketNumber())
+                        .message("Status is now " + updated.getStatus() + ": " + updated.getTitle())
+                        .recipient(updated.getCustomer().getEmail().trim().toLowerCase())
+                        .recipientType("CUSTOMER")
+                        .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
+                        .referenceType("TICKET")
+                        .referenceId(updated.getId())
+                        .build());
+            } catch (Exception ex) {
+                log.warn("Could not dispatch customer ticket update notification: {}", ex.getMessage());
+            }
+        }
         if (updated.getAssignedTo() != null) {
             notificationWebSocketService.sendTicketAssignedToEmployee(
                     updated.getAssignedTo().getId(),

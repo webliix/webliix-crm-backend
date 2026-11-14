@@ -19,11 +19,11 @@ public class NotificationEventListener {
     @EventListener
     public void onLeadCreated(LeadCreatedEvent event) {
         CreateNotificationRequest request = CreateNotificationRequest.builder()
-                .title("New Lead Created")
-                .message("A new lead '" + event.getLeadName() + "' has been created.")
-                .recipient(event.getEmail())
-                .recipientType("CUSTOMER")
-                .channel(NotificationChannel.EMAIL)
+                .title("New Inbound Lead")
+                .message("A new CRM lead '" + event.getLeadName() + "' has been captured.")
+                .recipient("ROLE_ADMIN")
+                .recipientType("ADMIN")
+                .channel(NotificationChannel.IN_APP)
                 .referenceType(ReferenceType.LEAD.name())
                 .referenceId(event.getLeadId())
                 .build();

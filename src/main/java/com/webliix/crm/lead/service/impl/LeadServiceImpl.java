@@ -35,6 +35,7 @@ public class LeadServiceImpl implements LeadService {
 
     private final LeadRepository leadRepository;
     private final EmailService emailService;
+    private final com.webliix.notifications.service.EmailTemplateService emailTemplateService;
     private final ApplicationEventPublisher eventPublisher;
     private final DataScopeService dataScopeService;
 
@@ -211,5 +212,57 @@ public class LeadServiceImpl implements LeadService {
         lead.setUpdatedAt(LocalDateTime.now());
         Lead saved = leadRepository.save(lead);
         return LeadMapper.toResponse(saved);
+    }
+
+    @Override
+    public void sendEmailToLead(Long id, com.webliix.crm.lead.dto.SendLeadEmailRequest request) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Lead not found with id: " + id));
+
+        String recipient = request.getRecipientEmail() != null && !request.getRecipientEmail().isBlank()
+                ? request.getRecipientEmail().trim()
+                : lead.getEmail();
+
+        if (recipient == null || recipient.isBlank()) {
+            throw new IllegalArgumentException("Lead does not have a registered email address. Please provide a recipient email.");
+        }
+
+        String leadName = request.getRecipientName() != null && !request.getRecipientName().isBlank()
+                ? request.getRecipientName().trim()
+                : (lead.getContactPerson() != null && !lead.getContactPerson().isBlank()
+                    ? lead.getContactPerson()
+                    : (lead.getCompanyName() != null ? lead.getCompanyName() : "Prospective Client"));
+
+        sendLeadEmailInternal(recipient, leadName, request.getSubject(), request.getMessage(), request.getCtaText(), request.getCtaUrl());
+    }
+
+    @Override
+    public void sendDirectEmail(com.webliix.crm.lead.dto.SendLeadEmailRequest request) {
+        String recipient = request.getRecipientEmail();
+        if (recipient == null || recipient.isBlank()) {
+            throw new IllegalArgumentException("Recipient email address is required.");
+        }
+
+        String recipientName = request.getRecipientName() != null && !request.getRecipientName().isBlank()
+                ? request.getRecipientName().trim()
+                : "Valued Client";
+
+        sendLeadEmailInternal(recipient.trim(), recipientName, request.getSubject(), request.getMessage(), request.getCtaText(), request.getCtaUrl());
+    }
+
+    private void sendLeadEmailInternal(String recipient, String recipientName, String subject, String message, String ctaText, String ctaUrl) {
+        java.util.Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("LEAD_NAME", recipientName);
+        vars.put("CLIENT_NAME", recipientName);
+        vars.put("NAME", recipientName);
+        vars.put("COMPANY_NAME", recipientName);
+        vars.put("SUBJECT", subject);
+        vars.put("MESSAGE", message);
+        vars.put("CTA_TEXT", ctaText != null && !ctaText.isBlank() ? ctaText : "Discuss Your Project");
+        vars.put("CTA_URL", ctaUrl != null && !ctaUrl.isBlank() ? ctaUrl : "https://webliix.com/contact");
+
+        String html = emailTemplateService.renderTemplateWithLayout("lead-direct-message", vars);
+        emailService.sendCustomHtmlEmail(recipient, subject, html);
+        log.info("Direct lead email successfully dispatched to {} with subject '{}'", recipient, subject);
     }
 }

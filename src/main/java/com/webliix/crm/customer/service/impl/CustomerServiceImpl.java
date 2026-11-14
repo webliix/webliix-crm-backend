@@ -41,6 +41,8 @@ public class CustomerServiceImpl implements CustomerService {
     private final InvoiceRepository invoiceRepository;
     private final CustomerCodeGenerator customerCodeGenerator;
     private final EmailService emailService;
+    private final com.webliix.notifications.service.EmailTemplateService emailTemplateService;
+    private final com.webliix.notifications.service.NotificationService notificationService;
     private final com.webliix.security.repository.UserRepository userRepository;
     private final com.webliix.security.repository.RoleRepository roleRepository;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
@@ -227,5 +229,51 @@ public class CustomerServiceImpl implements CustomerService {
         note.setCustomerId(customerId);
         note.setCreatedAt(LocalDateTime.now());
         return noteRepository.save(note);
+    }
+
+    @Override
+    public int broadcastEmailToAllCustomers(com.webliix.crm.customer.dto.BroadcastCustomerEmailRequest request) {
+        List<Customer> allCustomers = customerRepository.findAll();
+        int sentCount = 0;
+        String templateKey = (request.getTemplateKey() != null && !request.getTemplateKey().isBlank())
+                ? request.getTemplateKey().trim() : "client-broadcast";
+
+        for (Customer c : allCustomers) {
+            String email = c.getEmail();
+            if (email != null && !email.isBlank()) {
+                String clientName = c.getContactPerson() != null && !c.getContactPerson().isBlank()
+                        ? c.getContactPerson()
+                        : (c.getCompanyName() != null ? c.getCompanyName() : "Valued Client");
+                String company = c.getCompanyName() != null ? c.getCompanyName() : clientName;
+
+                java.util.Map<String, String> vars = new java.util.HashMap<>();
+                vars.put("CLIENT_NAME", clientName);
+                vars.put("COMPANY_NAME", company);
+                vars.put("TITLE", request.getSubject());
+                vars.put("SUBJECT", request.getSubject());
+                vars.put("MESSAGE", request.getMessage());
+                vars.put("CTA_TEXT", request.getCtaText() != null ? request.getCtaText() : "Open Client Workspace");
+                vars.put("CTA_URL", request.getCtaUrl() != null ? request.getCtaUrl() : "https://login.webliix.com");
+
+                String html = emailTemplateService.renderTemplateWithLayout(templateKey, vars);
+                emailService.sendCustomHtmlEmail(email.trim(), request.getSubject(), html);
+                sentCount++;
+            }
+        }
+
+        try {
+            notificationService.broadcastNotification(com.webliix.notifications.dto.CreateNotificationRequest.builder()
+                    .title(request.getSubject())
+                    .message(request.getMessage())
+                    .recipient("ALL_CLIENTS")
+                    .recipientType("CLIENT")
+                    .channel(com.webliix.notifications.enums.NotificationChannel.IN_APP)
+                    .referenceType("ANNOUNCEMENT")
+                    .build());
+        } catch (Exception ex) {
+            log.warn("Failed to create client in-app broadcast announcement: {}", ex.getMessage());
+        }
+
+        return sentCount;
     }
 }

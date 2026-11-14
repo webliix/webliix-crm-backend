@@ -63,7 +63,7 @@ public class LeadController {
                 .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("LEADS_VIEW")
     public ResponseEntity<ApiResponse<LeadResponse>> getLead(@PathVariable Long id) {
         LeadResponse res = leadService.getLead(id);
@@ -74,7 +74,7 @@ public class LeadController {
                 .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("LEADS_EDIT")
     public ResponseEntity<ApiResponse<LeadResponse>> updateLead(@PathVariable Long id, @RequestBody CreateLeadRequest request) {
         LeadResponse res = leadService.updateLead(id, request);
@@ -85,7 +85,7 @@ public class LeadController {
                 .build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("LEADS_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteLead(@PathVariable Long id) {
         leadService.deleteLead(id);
@@ -95,7 +95,7 @@ public class LeadController {
                 .build());
     }
 
-    @PostMapping("/{id}/convert")
+    @PostMapping("/{id:[0-9]+}/convert")
     @RequirePermission("LEADS_CONVERT")
     public ResponseEntity<ApiResponse<Void>> convertLead(
             @PathVariable Long id,
@@ -109,7 +109,7 @@ public class LeadController {
                 .build());
     }
 
-    @PostMapping("/{id}/assign")
+    @PostMapping("/{id:[0-9]+}/assign")
     @RequirePermission("LEADS_ASSIGN")
     public ResponseEntity<ApiResponse<LeadResponse>> assignLead(
             @PathVariable Long id,
@@ -120,6 +120,31 @@ public class LeadController {
                 .success(true)
                 .message("Lead assigned successfully")
                 .data(res)
+                .build());
+    }
+
+    @PostMapping("/{id:[0-9]+}/send-email")
+    @RequirePermission(anyOf = {"LEADS_EDIT", "LEADS_VIEW"})
+    public ResponseEntity<ApiResponse<Void>> sendEmailToLead(
+            @PathVariable Long id,
+            @jakarta.validation.Valid @RequestBody com.webliix.crm.lead.dto.SendLeadEmailRequest request
+    ) {
+        leadService.sendEmailToLead(id, request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Email sent successfully to lead")
+                .build());
+    }
+
+    @PostMapping("/send-email")
+    @RequirePermission(anyOf = {"LEADS_EDIT", "LEADS_VIEW"})
+    public ResponseEntity<ApiResponse<Void>> sendDirectEmail(
+            @jakarta.validation.Valid @RequestBody com.webliix.crm.lead.dto.SendLeadEmailRequest request
+    ) {
+        leadService.sendDirectEmail(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .success(true)
+                .message("Email sent successfully")
                 .build());
     }
 }

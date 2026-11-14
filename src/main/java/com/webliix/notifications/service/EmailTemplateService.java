@@ -15,6 +15,10 @@ public interface EmailTemplateService {
     EmailTemplateResponse resetTemplateToDefault(Long id);
     void seedTemplatesIfEmpty();
 
+    GlobalEmailLayoutDto getGlobalLayout();
+    GlobalEmailLayoutDto updateGlobalLayout(GlobalEmailLayoutDto dto);
+    String renderTemplateWithLayout(String templateKey, java.util.Map<String, String> variables);
+
     NotificationRulesResponse getNotificationRules();
     NotificationRulesResponse updateNotificationRules(UpdateNotificationRulesRequest request);
 }

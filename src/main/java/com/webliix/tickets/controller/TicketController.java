@@ -83,7 +83,7 @@ public class TicketController {
                 .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> getTicket(
             @PathVariable Long id,
@@ -109,7 +109,7 @@ public class TicketController {
                 .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission(anyOf = {"TICKETS_EDIT", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> updateTicket(@PathVariable Long id,
                                                                     @RequestBody UpdateTicketRequest request) {
@@ -121,7 +121,7 @@ public class TicketController {
                 .build());
     }
 
-    @PutMapping("/{id}/resolve")
+    @PutMapping("/{id:[0-9]+}/resolve")
     @RequirePermission(anyOf = {"TICKETS_EDIT", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketResponse>> resolveTicket(@PathVariable Long id) {
         UpdateTicketRequest request = UpdateTicketRequest.builder()
@@ -135,7 +135,7 @@ public class TicketController {
                 .build());
     }
 
-    @PutMapping("/{id}/assign")
+    @PutMapping("/{id:[0-9]+}/assign")
     @RequirePermission("TICKETS_ASSIGN")
     public ResponseEntity<ApiResponse<TicketResponse>> assignTicket(@PathVariable Long id,
                                                                     @Valid @RequestBody AssignTicketRequest request) {
@@ -147,7 +147,7 @@ public class TicketController {
                 .build());
     }
 
-    @GetMapping("/{id}/comments")
+    @GetMapping("/{id:[0-9]+}/comments")
     @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<List<TicketCommentResponse>>> getComments(@PathVariable Long id) {
         List<TicketCommentResponse> response = ticketService.getTicketComments(id);
@@ -158,7 +158,7 @@ public class TicketController {
                 .build());
     }
 
-    @PostMapping("/{id}/comments")
+    @PostMapping("/{id:[0-9]+}/comments")
     @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketCommentResponse>> addComment(@PathVariable Long id,
                                                                          @Valid @RequestBody CreateTicketCommentRequest request,
@@ -174,7 +174,7 @@ public class TicketController {
                 .build());
     }
 
-    @PostMapping("/{id}/attachments")
+    @PostMapping("/{id:[0-9]+}/attachments")
     @RequirePermission(anyOf = {"TICKETS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<TicketAttachmentResponse>> addAttachment(@PathVariable Long id,
                                                                                @Valid @RequestBody CreateTicketAttachmentRequest request) {

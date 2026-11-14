@@ -63,15 +63,15 @@ public class PublicLeadEventListener {
             CreateNotificationRequest notifRequest = CreateNotificationRequest.builder()
                     .title(leadTitle)
                     .message(notifMessage)
-                    .recipient("ALL")
-                    .recipientType("BROADCAST")
+                    .recipient("ROLE_ADMIN")
+                    .recipientType("ADMIN")
                     .channel(NotificationChannel.IN_APP)
                     .referenceType(ReferenceType.LEAD.name())
                     .referenceId(event.getLeadId())
                     .build();
 
-            notificationService.broadcastNotification(notifRequest);
-            log.info("Internal CRM notification broadcast created for Lead ID {}", event.getLeadId());
+            notificationService.createNotification(notifRequest);
+            log.info("Internal CRM notification created for Lead ID {} targeted strictly to ROLE_ADMIN", event.getLeadId());
         } catch (Exception ex) {
             log.error("Failed to create internal CRM notification for Lead ID {}: {}", event.getLeadId(), ex.getMessage());
         }

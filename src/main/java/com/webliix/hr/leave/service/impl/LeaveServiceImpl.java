@@ -72,7 +72,11 @@ public class LeaveServiceImpl implements LeaveService {
 
         Long currentUserId = dataScopeService.getCurrentUserId();
         if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null && currentUserId != null) {
-            if (leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
+            boolean isSuperAdmin = false;
+            try {
+                isSuperAdmin = dataScopeService.resolve("LEAVE_APPROVE").isSuperAdmin();
+            } catch (Exception ignored) {}
+            if (!isSuperAdmin && leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
                 throw new AccessDeniedException("Maker-checker violation: You cannot approve your own leave request.");
             }
         }
@@ -112,7 +116,11 @@ public class LeaveServiceImpl implements LeaveService {
 
         Long currentUserId = dataScopeService.getCurrentUserId();
         if (leaveRequest.getEmployee() != null && leaveRequest.getEmployee().getUser() != null && currentUserId != null) {
-            if (leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
+            boolean isSuperAdmin = false;
+            try {
+                isSuperAdmin = dataScopeService.resolve("LEAVE_APPROVE").isSuperAdmin();
+            } catch (Exception ignored) {}
+            if (!isSuperAdmin && leaveRequest.getEmployee().getUser().getId().equals(currentUserId)) {
                 throw new AccessDeniedException("Maker-checker violation: You cannot reject your own leave request.");
             }
         }

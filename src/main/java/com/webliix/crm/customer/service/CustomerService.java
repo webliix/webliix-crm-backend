@@ -38,6 +38,8 @@ public interface CustomerService {
 
     CustomerNote addCustomerNote(Long customerId, CustomerNote note);
 
+    int broadcastEmailToAllCustomers(com.webliix.crm.customer.dto.BroadcastCustomerEmailRequest request);
+
     void provisionClientPortalAccount(Customer customer, String customPassword);
 
     default void provisionClientPortalAccount(Customer customer) {

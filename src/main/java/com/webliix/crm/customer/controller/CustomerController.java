@@ -28,6 +28,7 @@ public class CustomerController {
     private final CustomerService customerService;
     private final CustomerStatisticsService statisticsService;
     private final com.webliix.notifications.service.EmailService emailService;
+    private final com.webliix.notifications.service.EmailTemplateService emailTemplateService;
 
     @PostMapping
     @RequirePermission("CUSTOMERS_CREATE")
@@ -71,7 +72,7 @@ public class CustomerController {
                 .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCustomer(@PathVariable Long id) {
         CustomerResponse res = customerService.getCustomer(id);
@@ -82,7 +83,7 @@ public class CustomerController {
                 .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
             @PathVariable Long id,
@@ -96,7 +97,7 @@ public class CustomerController {
                 .build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("CUSTOMERS_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable Long id) {
         customerService.deleteCustomer(id);
@@ -117,7 +118,7 @@ public class CustomerController {
                 .build());
     }
 
-    @GetMapping("/{id}/projects")
+    @GetMapping("/{id:[0-9]+}/projects")
     @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getCustomerProjects(@PathVariable Long id) {
         List<ProjectResponse> res = customerService.getCustomerProjects(id);
@@ -128,7 +129,7 @@ public class CustomerController {
                 .build());
     }
 
-    @GetMapping("/{id}/invoices")
+    @GetMapping("/{id:[0-9]+}/invoices")
     @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<InvoiceResponse>>> getCustomerInvoices(@PathVariable Long id) {
         List<InvoiceResponse> res = customerService.getCustomerInvoices(id);
@@ -139,7 +140,7 @@ public class CustomerController {
                 .build());
     }
 
-    @GetMapping("/{id}/contacts")
+    @GetMapping("/{id:[0-9]+}/contacts")
     @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<CustomerContact>>> getCustomerContacts(@PathVariable Long id) {
         List<CustomerContact> res = customerService.getCustomerContacts(id);
@@ -150,7 +151,7 @@ public class CustomerController {
                 .build());
     }
 
-    @PostMapping("/{id}/contacts")
+    @PostMapping("/{id:[0-9]+}/contacts")
     @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerContact>> addCustomerContact(
             @PathVariable Long id,
@@ -164,7 +165,7 @@ public class CustomerController {
                 .build());
     }
 
-    @GetMapping("/{id}/notes")
+    @GetMapping("/{id:[0-9]+}/notes")
     @RequirePermission("CUSTOMERS_VIEW")
     public ResponseEntity<ApiResponse<List<CustomerNote>>> getCustomerNotes(@PathVariable Long id) {
         List<CustomerNote> res = customerService.getCustomerNotes(id);
@@ -175,7 +176,7 @@ public class CustomerController {
                 .build());
     }
 
-    @PostMapping("/{id}/notes")
+    @PostMapping("/{id:[0-9]+}/notes")
     @RequirePermission("CUSTOMERS_EDIT")
     public ResponseEntity<ApiResponse<CustomerNote>> addCustomerNote(
             @PathVariable Long id,
@@ -189,7 +190,7 @@ public class CustomerController {
                 .build());
     }
 
-    @PostMapping("/{id}/send-email")
+    @PostMapping("/{id:[0-9]+}/send-email")
     @RequirePermission(anyOf = {"CUSTOMERS_EDIT", "CUSTOMERS_VIEW"})
     public ResponseEntity<ApiResponse<Void>> sendEmailToCustomer(
             @PathVariable Long id,
@@ -209,8 +210,16 @@ public class CustomerController {
                 ? customer.getContactPerson()
                 : (customer.getCompanyName() != null ? customer.getCompanyName() : "Valued Client");
 
-        String html = buildCustomerEmailHtml(request.getSubject(), customerName, request.getMessage());
-        emailService.sendHtmlEmail(recipient, request.getSubject(), html);
+        java.util.Map<String, String> vars = new java.util.HashMap<>();
+        vars.put("CLIENT_NAME", customerName);
+        vars.put("COMPANY_NAME", customer.getCompanyName() != null ? customer.getCompanyName() : customerName);
+        vars.put("SUBJECT", request.getSubject());
+        vars.put("MESSAGE", request.getMessage());
+        vars.put("CTA_TEXT", "Access Client Portal");
+        vars.put("CTA_URL", "https://login.webliix.com");
+
+        String html = emailTemplateService.renderTemplateWithLayout("client-direct-message", vars);
+        emailService.sendCustomHtmlEmail(recipient, request.getSubject(), html);
 
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .success(true)
@@ -218,46 +227,17 @@ public class CustomerController {
                 .build());
     }
 
-    private String buildCustomerEmailHtml(String subject, String customerName, String message) {
-        String escapedMsg = message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>");
-        return """
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>%s</title>
-                </head>
-                <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; color: #1e293b;">
-                    <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 15px;">
-                        <tr>
-                            <td align="center">
-                                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-                                    <tr>
-                                        <td style="background-color: #0f172a; padding: 24px 32px; text-align: center;">
-                                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Webliix <span style="color: #6366f1;">Hub</span></h1>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 32px;">
-                                            <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">%s</h2>
-                                            <p style="margin: 0 0 16px 0; font-size: 15px; color: #334155;">Dear <strong>%s</strong>,</p>
-                                            <div style="font-size: 14px; line-height: 1.7; color: #475569; margin: 0 0 24px 0;">
-                                                %s
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-                                            <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; font-weight: 600;">Webliix Hub • Enterprise Client & Management Platform</p>
-                                            <p style="margin: 0; color: #94a3b8; font-size: 11px;">&lt; Your Success is our Code /&gt; • contact@webliix.com</p>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </body>
-                </html>
-                """.formatted(subject, subject, customerName, escapedMsg);
+    @PostMapping("/broadcast-email")
+    @RequirePermission(anyOf = {"CUSTOMERS_EDIT", "CUSTOMERS_VIEW", "DASHBOARD_VIEW"})
+    public ResponseEntity<ApiResponse<Integer>> broadcastEmailToAllClients(
+            @jakarta.validation.Valid @RequestBody com.webliix.crm.customer.dto.BroadcastCustomerEmailRequest request,
+            org.springframework.security.core.Authentication auth
+    ) {
+        int count = customerService.broadcastEmailToAllCustomers(request);
+        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+                .success(true)
+                .message("Broadcast email successfully dispatched to " + count + " client accounts.")
+                .data(count)
+                .build());
     }
 }

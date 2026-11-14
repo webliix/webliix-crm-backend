@@ -12,18 +12,17 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/offers")
+@RequestMapping({"/api/v1/offers", "/api/v1/portal/offers"})
 @RequiredArgsConstructor
 public class OfferController {
 
     private final OfferService offerService;
 
     /**
-     * GET /api/v1/offers
+     * GET /api/v1/offers and /api/v1/portal/offers
      * Returns offers. Clients/public get active offers; Staff can specify ?all=true to see all.
      */
     @GetMapping
-    @RequirePermission(anyOf = {"OFFERS_MANAGE", "CLIENT_PORTAL_ACCESS", "DASHBOARD_VIEW"})
     public ResponseEntity<ApiResponse<List<OfferResponse>>> getOffers(
             @RequestParam(defaultValue = "false") boolean all
     ) {
@@ -38,7 +37,6 @@ public class OfferController {
     }
 
     @GetMapping("/{id}")
-    @RequirePermission(anyOf = {"OFFERS_MANAGE", "CLIENT_PORTAL_ACCESS", "DASHBOARD_VIEW"})
     public ResponseEntity<ApiResponse<OfferResponse>> getOffer(@PathVariable Long id) {
         OfferResponse response = offerService.getOffer(id);
         return ResponseEntity.ok(ApiResponse.<OfferResponse>builder()

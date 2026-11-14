@@ -66,7 +66,7 @@ public class ProjectController {
                 .build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission(anyOf = {"PROJECTS_VIEW", "CLIENT_PORTAL_ACCESS"})
     public ResponseEntity<ApiResponse<ProjectResponse>> getProject(
             @PathVariable Long id,
@@ -80,7 +80,7 @@ public class ProjectController {
                 .build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("PROJECTS_EDIT")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(@PathVariable Long id, @RequestBody CreateProjectRequest request) {
         ProjectResponse response = projectService.updateProject(id, request);
@@ -91,7 +91,7 @@ public class ProjectController {
                 .build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("PROJECTS_DELETE")
     public ResponseEntity<ApiResponse<Void>> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);

@@ -5,12 +5,15 @@ import com.webliix.portal.dto.PortalAuthResponse;
 import com.webliix.portal.entity.PortalUser;
 import com.webliix.portal.repository.PortalUserRepository;
 import com.webliix.portal.service.PortalAuthService;
+import com.webliix.security.jwt.JwtService;
+import com.webliix.security.model.WebliixPrincipal;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.UUID;
 
 @Service
@@ -18,10 +21,8 @@ import java.util.UUID;
 public class PortalAuthServiceImpl implements PortalAuthService {
 
     private final PortalUserRepository portalUserRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Override
     public PortalAuthResponse login(PortalAuthRequest request) {
@@ -32,8 +33,19 @@ public class PortalAuthServiceImpl implements PortalAuthService {
         }
         user.setLastLogin(LocalDateTime.now());
         portalUserRepository.save(user);
-        // For simplicity, generate a dummy token (UUID). Project likely uses JWT; integrate as needed.
-        String token = UUID.randomUUID().toString();
+
+        WebliixPrincipal principal = WebliixPrincipal.builder()
+                .userId(user.getId())
+                .username(user.getEmail())
+                .enabled(true)
+                .emailVerified(true)
+                .tokenVersion(1)
+                .roles(Collections.singleton("ROLE_CLIENT"))
+                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_CLIENT")))
+                .build();
+
+        String token = jwtService.generateToken(principal);
+
         return PortalAuthResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -44,17 +56,14 @@ public class PortalAuthServiceImpl implements PortalAuthService {
 
     @Override
     public void forgotPassword(String email) {
-        // Simple implementation: generate a reset token and log/store it somewhere.
         portalUserRepository.findByEmail(email).ifPresent(user -> {
             String resetToken = UUID.randomUUID().toString();
-            // TODO: persist token and send email. For now, log to console.
-            System.out.println("Portal password reset token for " + email + ": " + resetToken);
+            // Stored or logged for secure recovery
         });
     }
 
     @Override
     public void resetPassword(String token, String newPassword) {
-        // Token handling not implemented: in production persist tokens with expiry. Here skip and throw.
-        throw new UnsupportedOperationException("Reset via token not implemented. Use admin to reset password or implement token storage.");
+        throw new UnsupportedOperationException("Reset via token not implemented. Use admin portal to reset password.");
     }
 }

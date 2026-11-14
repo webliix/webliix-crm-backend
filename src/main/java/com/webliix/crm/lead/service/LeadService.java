@@ -24,4 +24,8 @@ public interface LeadService {
     Page<LeadResponse> searchLeads(String keyword, Pageable pageable);
 
     LeadResponse assignLead(Long id, Long assignedToUserId);
+
+    void sendEmailToLead(Long id, com.webliix.crm.lead.dto.SendLeadEmailRequest request);
+
+    void sendDirectEmail(com.webliix.crm.lead.dto.SendLeadEmailRequest request);
 }

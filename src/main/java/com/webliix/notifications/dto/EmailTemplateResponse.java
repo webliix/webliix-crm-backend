@@ -16,6 +16,9 @@ public class EmailTemplateResponse {
     private String templateKey;
     private String subject;
     private String htmlContent;
+    private String headerHtml;
+    private String footerHtml;
+    private String senderEmail;
     private String plainTextContent;
     private Boolean isActive;
     private String description;

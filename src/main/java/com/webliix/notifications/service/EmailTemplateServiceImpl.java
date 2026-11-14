@@ -31,106 +31,171 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
 
     private static final Map<String, TemplateMeta> DEFAULT_TEMPLATES = new LinkedHashMap<>();
 
+    public static final String DEFAULT_GLOBAL_HEADER = """
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0f172a; padding: 22px 30px; text-align: center; border-radius: 8px 8px 0 0;">
+            <tr>
+                <td align="center">
+                    <img src="https://res.cloudinary.com/vhth8clt/image/upload/v1788210409/logo.png" alt="Webliix" style="height: 38px; max-width: 170px; object-fit: contain; display: block; margin: 0 auto;" />
+                </td>
+            </tr>
+        </table>
+        """;
+
+    public static final String DEFAULT_GLOBAL_FOOTER = """
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 22px 30px; border-top: 1px solid #e2e8f0; text-align: center; border-radius: 0 0 8px 8px;">
+            <tr>
+                <td>
+                    <p style="margin: 0 0 5px 0; color: #334155; font-size: 13px; font-weight: 700;">Webliix Hub • Enterprise Client & Management Platform</p>
+                    <p style="margin: 0 0 6px 0; color: #94a3b8; font-size: 11px;">B-34, Galaxy Blue Sapphire Plaza, Sector 4, Greater Noida West, UP 201305</p>
+                    <p style="margin: 0; color: #64748b; font-size: 11px;">Inquiries: contact@webliix.com | Support: support@webliix.com | webliix.com</p>
+                </td>
+            </tr>
+        </table>
+        """;
+
     static {
+        // --- AUTOMATED EMAILS (Sent via noreply@webliix.com) ---
         DEFAULT_TEMPLATES.put("customer-welcome", new TemplateMeta(
                 "Welcome to Webliix Hub - Client Portal Access",
                 "Sent to client contact when converted from a lead or registered",
-                "{{NAME}}, {{EMAIL}}, {{PASSWORD}}, {{LOGIN_URL}}"
+                "{{NAME}}, {{EMAIL}}, {{PASSWORD}}, {{LOGIN_URL}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("employee-welcome", new TemplateMeta(
                 "Welcome to Webliix Team - Employee Portal Credentials",
                 "Sent to employee when staff account is provisioned",
-                "{{NAME}}, {{EMAIL}}, {{PASSWORD}}, {{DESIGNATION}}, {{DEPARTMENT}}, {{LOGIN_URL}}"
+                "{{NAME}}, {{EMAIL}}, {{PASSWORD}}, {{DESIGNATION}}, {{DEPARTMENT}}, {{LOGIN_URL}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("email-verification-otp", new TemplateMeta(
                 "Webliix Hub - Email Verification Code",
                 "Sent during user sign up to verify email identity",
-                "{{NAME}}, {{OTP}}, {{EXPIRATION_MINUTES}}"
+                "{{NAME}}, {{OTP}}, {{EXPIRATION_MINUTES}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("forgot-password-otp", new TemplateMeta(
                 "Webliix Hub - Password Reset Code",
                 "Sent when user requests account recovery code",
-                "{{NAME}}, {{OTP}}, {{EXPIRATION_MINUTES}}"
+                "{{NAME}}, {{OTP}}, {{EXPIRATION_MINUTES}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("password-reset-success", new TemplateMeta(
                 "Webliix Hub - Password Reset Successful",
                 "Confirmation email that password was changed",
-                "{{NAME}}"
+                "{{NAME}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("invoice-generated", new TemplateMeta(
                 "New Invoice Issued - Webliix Hub",
                 "Sent to customer when billing generates an invoice",
-                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{DUE_DATE}}, {{PORTAL_URL}}"
+                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{DUE_DATE}}, {{PORTAL_URL}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("invoice-paid", new TemplateMeta(
                 "Payment Received & Confirmed - Webliix Hub",
                 "Official receipt sent when client invoice is paid",
-                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{PAID_DATE}}"
-        ));
-        DEFAULT_TEMPLATES.put("lead-created", new TemplateMeta(
-                "New Inbound Lead Received - Webliix CRM",
-                "Notification to sales team when website inquiry is submitted",
-                "{{NAME}}, {{EMAIL}}, {{PHONE}}, {{SOURCE}}"
-        ));
-        DEFAULT_TEMPLATES.put("lead-inquiry-acknowledgment", new TemplateMeta(
-                "We Received Your Inquiry - Webliix Team",
-                "Automated reply sent to visitor after contacting sales",
-                "{{NAME}}, {{INQUIRY_DATE}}"
-        ));
-        DEFAULT_TEMPLATES.put("payroll-generated", new TemplateMeta(
-                "Monthly Salary Slip Available - Webliix HR",
-                "Sent to employee when monthly payroll is processed",
-                "{{EMPLOYEE_NAME}}, {{MONTH}}, {{YEAR}}, {{NET_SALARY}}"
-        ));
-        DEFAULT_TEMPLATES.put("quotation-sent", new TemplateMeta(
-                "Quotation Proposal - Webliix Hub",
-                "Formal estimate proposal sent to client",
-                "{{CLIENT_NAME}}, {{QUOTATION_NUMBER}}, {{TOTAL_AMOUNT}}"
-        ));
-        DEFAULT_TEMPLATES.put("system-notification", new TemplateMeta(
-                "Webliix Hub Notification",
-                "Generic system broadcast template",
-                "{{TITLE}}, {{MESSAGE}}"
-        ));
-        DEFAULT_TEMPLATES.put("ticket-created", new TemplateMeta(
-                "Support Ticket Opened - Webliix Helpdesk",
-                "Sent to client and support desk when new ticket is opened",
-                "{{TICKET_NUMBER}}, {{TITLE}}, {{CLIENT_NAME}}"
-        ));
-        DEFAULT_TEMPLATES.put("ticket-assigned", new TemplateMeta(
-                "Support Ticket Assigned to You - Webliix Helpdesk",
-                "Sent to staff engineer when ticket is assigned",
-                "{{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}"
-        ));
-        DEFAULT_TEMPLATES.put("ticket-resolved", new TemplateMeta(
-                "Support Ticket Resolved - Webliix Helpdesk",
-                "Sent to client and team when ticket issue is resolved",
-                "{{CLIENT_NAME}}, {{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}, {{MESSAGE}}"
+                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{PAID_DATE}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("invoice-reminder", new TemplateMeta(
                 "Invoice Payment Due Reminder - Webliix Hub",
                 "Sent to client when invoice is approaching due date or overdue",
-                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{DUE_DATE}}"
+                "{{CLIENT_NAME}}, {{INVOICE_NUMBER}}, {{AMOUNT}}, {{DUE_DATE}}",
+                "noreply@webliix.com"
         ));
-        DEFAULT_TEMPLATES.put("job-application-received", new TemplateMeta(
-                "Application Received - Careers at Webliix",
-                "Automated confirmation sent to candidate upon submitting resume",
-                "{{NAME}}, {{DESIGNATION}}, {{DEPARTMENT}}"
+        DEFAULT_TEMPLATES.put("lead-created", new TemplateMeta(
+                "New Inbound Lead Received - Webliix CRM",
+                "Internal notification to sales team when website inquiry is submitted",
+                "{{NAME}}, {{EMAIL}}, {{PHONE}}, {{SOURCE}}",
+                "noreply@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("payroll-generated", new TemplateMeta(
+                "Monthly Salary Slip Available - Webliix HR",
+                "Sent to employee when monthly payroll is processed",
+                "{{EMPLOYEE_NAME}}, {{MONTH}}, {{YEAR}}, {{NET_SALARY}}",
+                "noreply@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("quotation-sent", new TemplateMeta(
+                "Quotation Proposal - Webliix Hub",
+                "Formal estimate proposal sent to client",
+                "{{CLIENT_NAME}}, {{QUOTATION_NUMBER}}, {{TOTAL_AMOUNT}}",
+                "noreply@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("system-notification", new TemplateMeta(
+                "Webliix Hub Notification",
+                "Generic automated system notification template",
+                "{{TITLE}}, {{MESSAGE}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("project-status-updated", new TemplateMeta(
                 "Project Milestone Update - Webliix Hub",
                 "Sent to client when engineering logs a project milestone",
-                "{{CLIENT_NAME}}, {{TITLE}}, {{MESSAGE}}"
+                "{{CLIENT_NAME}}, {{TITLE}}, {{MESSAGE}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("newsletter-welcome", new TemplateMeta(
                 "Welcome to Webliix Insights & Architecture",
                 "Sent to subscriber upon joining the newsletter list",
-                "{{EMAIL}}, {{NAME}}"
+                "{{EMAIL}}, {{NAME}}",
+                "noreply@webliix.com"
         ));
         DEFAULT_TEMPLATES.put("welcome-email", new TemplateMeta(
                 "Welcome to Webliix Hub - Getting Started",
                 "Platform onboarding overview sent to newly provisioned users",
-                "{{NAME}}, {{EMAIL}}, {{LOGIN_URL}}"
+                "{{NAME}}, {{EMAIL}}, {{LOGIN_URL}}",
+                "noreply@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("job-application-received", new TemplateMeta(
+                "Application Received - Careers at Webliix",
+                "Automated confirmation sent to candidate upon submitting resume",
+                "{{NAME}}, {{DESIGNATION}}, {{DEPARTMENT}}",
+                "noreply@webliix.com"
+        ));
+
+        // --- SUPPORT EMAILS (Sent via support@webliix.com) ---
+        DEFAULT_TEMPLATES.put("lead-inquiry-acknowledgment", new TemplateMeta(
+                "We Received Your Inquiry - Webliix Support Team",
+                "Automated reply sent to visitor after contacting sales",
+                "{{NAME}}, {{INQUIRY_DATE}}",
+                "support@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("ticket-created", new TemplateMeta(
+                "Support Ticket Opened - Webliix Helpdesk",
+                "Sent to client and support desk when new ticket is opened",
+                "{{TICKET_NUMBER}}, {{TITLE}}, {{CLIENT_NAME}}",
+                "support@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("ticket-assigned", new TemplateMeta(
+                "Support Ticket Assigned to You - Webliix Helpdesk",
+                "Sent to staff engineer when ticket is assigned",
+                "{{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}",
+                "support@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("ticket-resolved", new TemplateMeta(
+                "Support Ticket Resolved - Webliix Helpdesk",
+                "Sent to client and team when ticket issue is resolved",
+                "{{CLIENT_NAME}}, {{TICKET_NUMBER}}, {{TITLE}}, {{STAFF_NAME}}, {{MESSAGE}}",
+                "support@webliix.com"
+        ));
+
+        // --- CUSTOM / DIRECT / BROADCAST EMAILS (Sent via contact@webliix.com) ---
+        DEFAULT_TEMPLATES.put("client-broadcast", new TemplateMeta(
+                "Important Update - Webliix Client Services",
+                "Common broadcast email sent to all active clients at once",
+                "{{CLIENT_NAME}}, {{COMPANY_NAME}}, {{TITLE}}, {{MESSAGE}}, {{CTA_TEXT}}, {{CTA_URL}}",
+                "contact@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("client-direct-message", new TemplateMeta(
+                "Message regarding your Webliix account",
+                "Custom communication dispatched directly to a specific client",
+                "{{CLIENT_NAME}}, {{COMPANY_NAME}}, {{SUBJECT}}, {{MESSAGE}}, {{CTA_TEXT}}, {{CTA_URL}}",
+                "contact@webliix.com"
+        ));
+        DEFAULT_TEMPLATES.put("lead-direct-message", new TemplateMeta(
+                "Inquiry Response & Project Discussion - Webliix",
+                "Direct communication sent from CRM to prospective leads or custom recipients",
+                "{{LEAD_NAME}}, {{SUBJECT}}, {{MESSAGE}}, {{CTA_TEXT}}, {{CTA_URL}}",
+                "contact@webliix.com"
         ));
     }
 
@@ -138,11 +203,13 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         final String defaultSubject;
         final String description;
         final String sampleVariables;
+        final String defaultSender;
 
-        TemplateMeta(String defaultSubject, String description, String sampleVariables) {
+        TemplateMeta(String defaultSubject, String description, String sampleVariables, String defaultSender) {
             this.defaultSubject = defaultSubject;
             this.description = description;
             this.sampleVariables = sampleVariables;
+            this.defaultSender = defaultSender;
         }
     }
 
@@ -155,7 +222,8 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         for (Map.Entry<String, TemplateMeta> entry : DEFAULT_TEMPLATES.entrySet()) {
             String key = entry.getKey();
             TemplateMeta meta = entry.getValue();
-            if (emailTemplateRepository.findByTemplateKey(key).isEmpty()) {
+            Optional<EmailTemplate> existing = emailTemplateRepository.findByTemplateKey(key);
+            if (existing.isEmpty()) {
                 String html = loadClasspathTemplate(key);
                 if (html == null || html.isBlank()) {
                     html = buildFallbackTemplateHtml(meta.defaultSubject, meta.description);
@@ -164,6 +232,9 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                         .templateKey(key)
                         .subject(meta.defaultSubject)
                         .htmlContent(html)
+                        .senderEmail(meta.defaultSender)
+                        .headerHtml(DEFAULT_GLOBAL_HEADER)
+                        .footerHtml(DEFAULT_GLOBAL_FOOTER)
                         .description(meta.description)
                         .sampleVariables(meta.sampleVariables)
                         .isActive(true)
@@ -172,7 +243,25 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                         .updatedAt(LocalDateTime.now())
                         .build();
                 emailTemplateRepository.save(template);
-                log.info("Seeded default email template: {}", key);
+                log.info("Seeded default email template: {} with sender {}", key, meta.defaultSender);
+            } else {
+                EmailTemplate et = existing.get();
+                boolean modified = false;
+                if (et.getSenderEmail() == null || et.getSenderEmail().isBlank()) {
+                    et.setSenderEmail(meta.defaultSender);
+                    modified = true;
+                }
+                if (et.getHeaderHtml() == null) {
+                    et.setHeaderHtml(DEFAULT_GLOBAL_HEADER);
+                    modified = true;
+                }
+                if (et.getFooterHtml() == null) {
+                    et.setFooterHtml(DEFAULT_GLOBAL_FOOTER);
+                    modified = true;
+                }
+                if (modified) {
+                    emailTemplateRepository.save(et);
+                }
             }
         }
     }
@@ -219,12 +308,112 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
         if (request.getDescription() != null) {
             t.setDescription(request.getDescription());
         }
+        if (request.getSenderEmail() != null && !request.getSenderEmail().isBlank()) {
+            t.setSenderEmail(request.getSenderEmail().trim());
+        }
+        if (request.getHeaderHtml() != null) {
+            t.setHeaderHtml(request.getHeaderHtml());
+        }
+        if (request.getFooterHtml() != null) {
+            t.setFooterHtml(request.getFooterHtml());
+        }
         t.setVersion(t.getVersion() != null ? t.getVersion() + 1 : 1);
         t.setUpdatedAt(LocalDateTime.now());
 
         EmailTemplate saved = emailTemplateRepository.save(t);
         log.info("Updated email template: {} (version {})", saved.getTemplateKey(), saved.getVersion());
         return toResponse(saved);
+    }
+
+    @Override
+    public GlobalEmailLayoutDto getGlobalLayout() {
+        SystemSetting headerSetting = settingsCacheService.getByKey("email.global.header_html");
+        SystemSetting footerSetting = settingsCacheService.getByKey("email.global.footer_html");
+        String header = headerSetting != null ? headerSetting.getSettingValue() : null;
+        String footer = footerSetting != null ? footerSetting.getSettingValue() : null;
+        return GlobalEmailLayoutDto.builder()
+                .headerHtml((header != null && !header.isBlank()) ? header : DEFAULT_GLOBAL_HEADER)
+                .footerHtml((footer != null && !footer.isBlank()) ? footer : DEFAULT_GLOBAL_FOOTER)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public GlobalEmailLayoutDto updateGlobalLayout(GlobalEmailLayoutDto dto) {
+        if (dto == null) return getGlobalLayout();
+        if (dto.getHeaderHtml() != null) {
+            saveOrUpdateLayoutSetting("email.global.header_html", dto.getHeaderHtml());
+        }
+        if (dto.getFooterHtml() != null) {
+            saveOrUpdateLayoutSetting("email.global.footer_html", dto.getFooterHtml());
+        }
+        settingsCacheService.reloadCache();
+        return getGlobalLayout();
+    }
+
+    private void saveOrUpdateLayoutSetting(String key, String value) {
+        SystemSetting s = systemSettingRepository.findBySettingKey(key).orElse(null);
+        if (s == null) {
+            s = SystemSetting.builder()
+                    .settingKey(key)
+                    .settingValue(value)
+                    .settingGroup("EMAIL")
+                    .dataType("HTML")
+                    .description("Global Email Layout Template Fragment")
+                    .editable(true)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        } else {
+            s.setSettingValue(value);
+            s.setUpdatedAt(LocalDateTime.now());
+        }
+        systemSettingRepository.save(s);
+    }
+
+    @Override
+    public String renderTemplateWithLayout(String templateKey, Map<String, String> variables) {
+        EmailTemplate t = emailTemplateRepository.findByTemplateKey(templateKey).orElse(null);
+        String body = (t != null && t.getHtmlContent() != null && !t.getHtmlContent().isBlank())
+                ? t.getHtmlContent() : loadClasspathTemplate(templateKey);
+        if (body == null || body.isBlank()) {
+            body = """
+                {{HEADER}}
+                <div style="padding: 32px 28px; background-color: #0F1F33; color: #F8FAFC; border-left: 1px solid rgba(96,165,250,0.22); border-right: 1px solid rgba(96,165,250,0.22);">
+                    <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #FFFFFF;">{{SUBJECT}}</h2>
+                    <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #E2E8F0; white-space: pre-wrap;">{{MESSAGE}}</p>
+                    <div style="margin-top: 24px;">
+                        <a href="{{CTA_URL}}" style="display: inline-block; padding: 12px 24px; background-color: #38BDF8; color: #07111F; text-decoration: none; font-weight: 700; border-radius: 6px; font-size: 14px;">{{CTA_TEXT}}</a>
+                    </div>
+                </div>
+                {{FOOTER}}
+                """;
+        } else if (!body.contains("{{HEADER}}") && !body.contains("{{FOOTER}}")) {
+            body = "{{HEADER}}\n" + body + "\n{{FOOTER}}";
+        }
+
+        GlobalEmailLayoutDto globalLayout = getGlobalLayout();
+        String header = (t != null && t.getHeaderHtml() != null && !t.getHeaderHtml().isBlank())
+                ? t.getHeaderHtml() : globalLayout.getHeaderHtml();
+        String footer = (t != null && t.getFooterHtml() != null && !t.getFooterHtml().isBlank())
+                ? t.getFooterHtml() : globalLayout.getFooterHtml();
+
+        if (body.contains("{{HEADER}}")) {
+            body = body.replace("{{HEADER}}", header);
+        }
+        if (body.contains("{{FOOTER}}")) {
+            body = body.replace("{{FOOTER}}", footer);
+        }
+
+        if (variables != null) {
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                String val = entry.getValue() != null ? entry.getValue() : "";
+                body = body.replace("{{" + entry.getKey() + "}}", val)
+                           .replace("{{" + entry.getKey().toUpperCase() + "}}", val)
+                           .replace("{{" + entry.getKey().toLowerCase() + "}}", val);
+            }
+        }
+        return body;
     }
 
     @Override
@@ -505,6 +694,9 @@ public class EmailTemplateServiceImpl implements EmailTemplateService {
                 .templateKey(t.getTemplateKey())
                 .subject(t.getSubject())
                 .htmlContent(t.getHtmlContent())
+                .headerHtml(t.getHeaderHtml() != null ? t.getHeaderHtml() : DEFAULT_GLOBAL_HEADER)
+                .footerHtml(t.getFooterHtml() != null ? t.getFooterHtml() : DEFAULT_GLOBAL_FOOTER)
+                .senderEmail(t.getSenderEmail() != null ? t.getSenderEmail() : "noreply@webliix.com")
                 .plainTextContent(t.getPlainTextContent())
                 .isActive(t.getIsActive())
                 .description(t.getDescription())

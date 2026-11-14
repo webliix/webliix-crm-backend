@@ -36,21 +36,21 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.<Page<EmployeeResponse>>builder().success(true).message("Employees fetched").data(response).build());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     @RequirePermission("EMPLOYEES_VIEW")
     public ResponseEntity<ApiResponse<EmployeeResponse>> getEmployee(@PathVariable Long id) {
         EmployeeResponse response = employeeService.getEmployee(id);
         return ResponseEntity.ok(ApiResponse.<EmployeeResponse>builder().success(true).message("Employee fetched").data(response).build());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9]+}")
     @RequirePermission("EMPLOYEES_MANAGE")
     public ResponseEntity<ApiResponse<EmployeeResponse>> updateEmployee(@PathVariable Long id, @RequestBody EmployeeRequest request) {
         EmployeeResponse response = employeeService.updateEmployee(id, request);
         return ResponseEntity.ok(ApiResponse.<EmployeeResponse>builder().success(true).message("Employee updated successfully").data(response).build());
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9]+}")
     @RequirePermission("EMPLOYEES_MANAGE")
     public ResponseEntity<ApiResponse<Void>> deleteEmployee(@PathVariable Long id) {
         employeeService.deleteEmployee(id);

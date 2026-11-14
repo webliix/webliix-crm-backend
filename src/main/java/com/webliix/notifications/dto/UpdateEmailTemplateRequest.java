@@ -17,6 +17,10 @@ public class UpdateEmailTemplateRequest {
     @NotBlank(message = "HTML content is required")
     private String htmlContent;
 
+    private String headerHtml;
+    private String footerHtml;
+    private String senderEmail;
+
     private String plainTextContent;
     private Boolean isActive;
     private String description;

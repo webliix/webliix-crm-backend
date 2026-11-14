@@ -214,16 +214,21 @@ public class ExpenseServiceImpl implements ExpenseService {
         String currentStatus = expense.getStatus() != null ? expense.getStatus().toUpperCase() : "PENDING";
         String target = targetStatus != null ? targetStatus.trim().toUpperCase() : "";
 
+        boolean isSuperAdmin = false;
+        try {
+            isSuperAdmin = dataScopeService.resolve("EXPENSES_APPROVE").isSuperAdmin();
+        } catch (Exception ignored) {}
+
         // Explicit status transition map
         if ("APPROVED".equals(target)) {
             if (!permissionEvaluator.has("EXPENSES_APPROVE")) {
                 throw new AccessDeniedException("Missing required permission: EXPENSES_APPROVE");
             }
-            if (!"PENDING".equals(currentStatus)) {
+            if (!"PENDING".equals(currentStatus) && !isSuperAdmin) {
                 throw new BusinessException("Cannot approve an expense with status: " + currentStatus);
             }
-            // Maker-checker rule: User can NEVER approve their own expense
-            if (expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
+            // Maker-checker rule: User can NEVER approve their own expense (unless Super Admin override)
+            if (!isSuperAdmin && expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
                 log.warn("Maker-checker violation: User {} attempted to approve own expense {}", currentUserId, id);
                 throw new AccessDeniedException("Maker-checker violation: You cannot approve your own expense.");
             }
@@ -234,11 +239,11 @@ public class ExpenseServiceImpl implements ExpenseService {
             if (!permissionEvaluator.has("EXPENSES_APPROVE")) {
                 throw new AccessDeniedException("Missing required permission: EXPENSES_APPROVE");
             }
-            if (!"PENDING".equals(currentStatus)) {
+            if (!"PENDING".equals(currentStatus) && !isSuperAdmin) {
                 throw new BusinessException("Cannot reject an expense with status: " + currentStatus);
             }
-            // Maker-checker rule: User can NEVER reject their own expense
-            if (expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
+            // Maker-checker rule: User can NEVER reject their own expense (unless Super Admin override)
+            if (!isSuperAdmin && expense.getCreatedByUserId() != null && expense.getCreatedByUserId().equals(currentUserId)) {
                 log.warn("Maker-checker violation: User {} attempted to reject own expense {}", currentUserId, id);
                 throw new AccessDeniedException("Maker-checker violation: You cannot reject your own expense.");
             }

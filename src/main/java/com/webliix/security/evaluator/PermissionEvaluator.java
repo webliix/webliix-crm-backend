@@ -44,21 +44,39 @@ public class PermissionEvaluator {
                 for (String r : webliixPrincipal.getRoles()) {
                     String norm = r.toUpperCase();
                     if (norm.equals("SUPER_ADMIN") || norm.equals("ROLE_SUPER_ADMIN")
-                            || norm.equals("ADMIN") || norm.equals("ROLE_ADMIN")) {
+                            || norm.equals("ADMIN") || norm.equals("ROLE_ADMIN")
+                            || norm.equals("*")) {
+                        return true;
+                    }
+                    if ("CLIENT_PORTAL_ACCESS".equalsIgnoreCase(permissionCode)
+                            && (norm.equals("CLIENT") || norm.equals("ROLE_CLIENT") || norm.equals("USER") || norm.equals("ROLE_USER"))) {
                         return true;
                     }
                 }
+            }
+            if ("CLIENT_PORTAL_ACCESS".equalsIgnoreCase(permissionCode) && webliixPrincipal.hasPermission("CLIENT_PORTAL_ACCESS")) {
+                return true;
             }
             return webliixPrincipal.hasPermission(permissionCode);
         }
         // Fallback for standard authorities
         return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equalsIgnoreCase(permissionCode)
-                        || a.getAuthority().equalsIgnoreCase("ROLE_" + permissionCode)
-                        || a.getAuthority().equalsIgnoreCase("ROLE_SUPER_ADMIN")
-                        || a.getAuthority().equalsIgnoreCase("SUPER_ADMIN")
-                        || a.getAuthority().equalsIgnoreCase("ROLE_ADMIN")
-                        || a.getAuthority().equalsIgnoreCase("ADMIN"));
+                .anyMatch(a -> {
+                    String aUpper = a.getAuthority().toUpperCase();
+                    if (aUpper.equalsIgnoreCase(permissionCode) || aUpper.equalsIgnoreCase("ROLE_" + permissionCode)) {
+                        return true;
+                    }
+                    if (aUpper.equals("ROLE_SUPER_ADMIN") || aUpper.equals("SUPER_ADMIN")
+                            || aUpper.equals("ROLE_ADMIN") || aUpper.equals("ADMIN")
+                            || aUpper.equals("*")) {
+                        return true;
+                    }
+                    if ("CLIENT_PORTAL_ACCESS".equalsIgnoreCase(permissionCode)
+                            && (aUpper.equals("ROLE_CLIENT") || aUpper.equals("CLIENT") || aUpper.equals("ROLE_USER") || aUpper.equals("USER"))) {
+                        return true;
+                    }
+                    return false;
+                });
     }
 
     public boolean hasAny(String... permissionCodes) {
